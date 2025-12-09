@@ -36,6 +36,7 @@
         top: 0;
         bottom: 0;
         padding: 0;
+        padding-bottom: 20px;
         z-index: 1000;
       }
 
@@ -1072,6 +1073,31 @@
         }
       }
 
+      // Get the primary model used in a conversation
+      function getConversationModel(conversation) {
+        // Check all messages in the conversation mapping for model_slug
+        var modelCounts = {};
+        for (var nodeId in conversation.mapping) {
+          var node = conversation.mapping[nodeId];
+          if (node.message && node.message.metadata && node.message.metadata.model_slug) {
+            var model = node.message.metadata.model_slug;
+            modelCounts[model] = (modelCounts[model] || 0) + 1;
+          }
+        }
+
+        // Return the most common model
+        var maxCount = 0;
+        var primaryModel = null;
+        for (var model in modelCounts) {
+          if (modelCounts[model] > maxCount) {
+            maxCount = modelCounts[model];
+            primaryModel = model;
+          }
+        }
+
+        return primaryModel || 'unknown';
+      }
+
       // Ensure each conversation has a container div in the DOM
       function ensureConversationDiv(conversation, root) {
         if (conversation._dom) {
@@ -1084,20 +1110,32 @@
         title.textContent = conversation.title || "(no title)";
         div.appendChild(title);
 
+        // Add model and date info
+        var metaDiv = document.createElement("div");
+        metaDiv.className = "date";
+
+        // Add model badge
+        var model = getConversationModel(conversation);
+        var modelBadge = document.createElement("span");
+        modelBadge.className = "model-badge";
+        modelBadge.textContent = model;
+        modelBadge.style.cssText = "background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; margin-right: 8px;";
+        metaDiv.appendChild(modelBadge);
+
         // Add date if available
         if (conversation.create_time) {
-          var dateDiv = document.createElement("div");
-          dateDiv.className = "date";
           var date = new Date(conversation.create_time * 1000);
-          dateDiv.textContent = date.toLocaleDateString('en-US', {
+          var dateText = document.createTextNode(date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
-          });
-          div.appendChild(dateDiv);
+          }));
+          metaDiv.appendChild(dateText);
         }
+
+        div.appendChild(metaDiv);
 
         root.appendChild(div);
         conversation._dom = div;
@@ -1267,7 +1305,9 @@
                         {left: '\\(', right: '\\)', display: false}
                       ],
                       throwOnError: false,
-                      trust: true
+                      trust: true,
+                      ignoredTags: [],
+                      ignoredClasses: []
                     });
                   } else {
                     console.warn('KaTeX renderMathInElement not loaded');
