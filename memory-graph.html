@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Graph - Interactive Memory Visualization</title>
+    <link rel="stylesheet" href="memory-graph.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Welcome Screen -->
+    <div id="welcome-screen" class="welcome-screen">
+        <div class="welcome-content">
+            <h1 class="welcome-title">Memory Graph</h1>
+            <p class="welcome-subtitle">Transform your conversations into an interactive knowledge graph</p>
+            
+            <div class="feature-cards">
+                <div class="feature-card">
+                    <div class="feature-icon">👥</div>
+                    <h3>People</h3>
+                    <p>Discover people you've talked about</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Projects</h3>
+                    <p>Track your projects and ideas</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💡</div>
+                    <h3>Knowledge</h3>
+                    <p>See what you've learned</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">❓</div>
+                    <h3>Questions</h3>
+                    <p>Explore questions you've asked</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💭</div>
+                    <h3>Thoughts</h3>
+                    <p>Capture your ideas and reflections</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔗</div>
+                    <h3>Patterns</h3>
+                    <p>Find recurring themes</p>
+                </div>
+            </div>
+            
+            <button id="start-processing" class="start-button">Process My Conversations</button>
+            <p class="welcome-note">This will analyze conversations.json in the same directory</p>
+        </div>
+    </div>
+
+    <!-- Processing Screen -->
+    <div id="processing-screen" class="processing-screen" style="display: none;">
+        <div class="processing-content">
+            <h2 class="processing-title">Building Your Memory Graph</h2>
+            <div class="processing-animation">
+                <div class="spinner"></div>
+            </div>
+            <div class="processing-stats">
+                <div class="stat">
+                    <div class="stat-value" id="processed-count">0</div>
+                    <div class="stat-label">Conversations Processed</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="entities-found">0</div>
+                    <div class="stat-label">Entities Discovered</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="progress-percent">0%</div>
+                    <div class="stat-label">Progress</div>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <p class="processing-status" id="processing-status">Initializing...</p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-app" class="main-app" style="display: none;">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="app-title">
+                <span class="app-logo">🧠</span>
+                <span class="app-name">Memory Graph</span>
+            </div>
+            
+            <div class="search-container">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    class="search-input" 
+                    placeholder="Search entities..."
+                    autocomplete="off"
+                />
+                <div id="search-suggestions" class="search-suggestions"></div>
+            </div>
+            
+            <div class="top-bar-actions">
+                <button id="view-timeline" class="icon-button" title="Timeline View">
+                    <span>📅</span>
+                </button>
+                <button id="view-list" class="icon-button" title="List View">
+                    <span>📋</span>
+                </button>
+                <button id="reset-view" class="icon-button" title="Reset View">
+                    <span>🔄</span>
+                </button>
+                <button id="show-stats" class="icon-button" title="Statistics">
+                    <span>📊</span>
+                </button>
+                <button id="show-settings" class="icon-button" title="Settings">
+                    <span>⚙️</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="content-area">
+            <!-- Left Sidebar -->
+            <div class="left-sidebar">
+                <div class="filter-section">
+                    <h3 class="filter-title">Entity Types</h3>
+                    <div class="filter-options">
+                        <label class="filter-option">
+                            <input type="checkbox" id="filter-person" checked />
+                            <span class="filter-dot" style="background-color: #3b82f6"></span>
+                            <span class="filter-label">People</span>
+                            <span class="filter-count" id="count-person">0</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" id="filter-project" checked />
+                            <span class="filter-dot" style="background-color: #10b981"></span>
+                            <span class="filter-label">Projects</span>
+                            <span class="filter-count" id="count-project">0</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" id="filter-knowledge" checked />
+                            <span class="filter-dot" style="background-color: #f59e0b"></span>
+                            <span class="filter-label">Knowledge</span>
+                            <span class="filter-count" id="count-knowledge">0</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" id="filter-question" checked />
+                            <span class="filter-dot" style="background-color: #8b5cf6"></span>
+                            <span class="filter-label">Questions</span>
+                            <span class="filter-count" id="count-question">0</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" id="filter-thought" checked />
+                            <span class="filter-dot" style="background-color: #ec4899"></span>
+                            <span class="filter-label">Thoughts</span>
+                            <span class="filter-count" id="count-thought">0</span>
+                        </label>
+                        <label class="filter-option">
+                            <input type="checkbox" id="filter-pattern" checked />
+                            <span class="filter-dot" style="background-color: #06b6d4"></span>
+                            <span class="filter-label">Patterns</span>
+                            <span class="filter-count" id="count-pattern">0</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="search-results-section" id="search-results-section" style="display: none;">
+                    <h3 class="filter-title">Search Results</h3>
+                    <div id="search-results" class="search-results"></div>
+                </div>
+
+                <div class="bookmarks-section">
+                    <h3 class="filter-title">Bookmarks</h3>
+                    <div id="bookmarks-list" class="bookmarks-list">
+                        <div class="empty-state">No bookmarks yet</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Area (Graph Canvas) -->
+            <div class="center-area">
+                <div class="breadcrumb" id="breadcrumb">
+                    <span class="breadcrumb-item active">Overview</span>
+                </div>
+                
+                <canvas id="graph-canvas"></canvas>
+                
+                <div class="graph-controls">
+                    <button id="zoom-in" class="control-button" title="Zoom In">+</button>
+                    <button id="zoom-out" class="control-button" title="Zoom Out">−</button>
+                    <button id="fit-view" class="control-button" title="Fit to Screen">⊡</button>
+                </div>
+
+                <div class="graph-legend">
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background-color: #3b82f6"></div>
+                        <span>Person</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background-color: #10b981"></div>
+                        <span>Project</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background-color: #f59e0b"></div>
+                        <span>Knowledge</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background-color: #8b5cf6"></div>
+                        <span>Question</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background-color: #ec4899"></div>
+                        <span>Thought</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background-color: #06b6d4"></div>
+                        <span>Pattern</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel (Entity Details / Timeline) -->
+            <div class="right-panel" id="right-panel">
+                <!-- Entity Panel will be injected here -->
+            </div>
+        </div>
+
+        <!-- Timeline View (toggleable) -->
+        <div class="timeline-container" id="timeline-container" style="display: none;">
+            <!-- Timeline will be rendered here -->
+        </div>
+    </div>
+
+    <!-- Stats Modal -->
+    <div id="stats-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Memory Graph Statistics</h2>
+                <button class="modal-close" id="close-stats">✕</button>
+            </div>
+            <div class="modal-body" id="stats-content">
+                <!-- Stats will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button class="modal-close" id="close-settings">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-group">
+                    <h3>Data Management</h3>
+                    <button id="export-data" class="setting-button">Export Memory Graph</button>
+                    <button id="import-data" class="setting-button">Import Memory Graph</button>
+                    <button id="reprocess-data" class="setting-button">Reprocess Conversations</button>
+                    <button id="clear-data" class="setting-button danger">Clear All Data</button>
+                </div>
+                <div class="setting-group">
+                    <h3>Visualization</h3>
+                    <label class="setting-option">
+                        <input type="checkbox" id="setting-show-labels" checked />
+                        <span>Always show labels</span>
+                    </label>
+                    <label class="setting-option">
+                        <input type="checkbox" id="setting-animate" checked />
+                        <span>Animate graph layout</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load scripts -->
+    <script src="db-manager.js"></script>
+    <script src="memory-processor.js"></script>
+    <script src="graph-renderer.js"></script>
+    <script src="timeline-view.js"></script>
+    <script src="entity-panel.js"></script>
+    <script src="search-engine.js"></script>
+    <script src="memory-graph-app.js"></script>
+</body>
+</html>
+
