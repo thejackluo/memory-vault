@@ -5,13 +5,27 @@
 !chat-optimized.html
 !index.html
 
-# Except the modular files
+# Except the modular files (v2.0.0)
 !app.js
 !style.css
+
+# Except the memory graph system files (v3.0.0)
+!memory-graph.html
+!memory-graph.css
+!memory-graph-app.js
+!db-manager.js
+!memory-processor.js
+!processing-worker.js
+!graph-renderer.js
+!timeline-view.js
+!entity-panel.js
+!search-engine.js
 
 # Except the README files
 !README.md
 !ASSETS_README.md
+!MEMORY_GRAPH_README.md
+!QUICK_START.md
 !docs/
 
 # And this gitignore itself
