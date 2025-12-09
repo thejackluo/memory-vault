@@ -1,8 +1,31 @@
 # Ignore everything
 *
 
-# Except the optimized HTML file
+# Except the HTML files
 !chat-optimized.html
+!index.html
+
+# Except the modular files (v2.0.0)
+!app.js
+!style.css
+
+# Except the memory graph system files (v3.0.0)
+!memory-graph.html
+!memory-graph.css
+!memory-graph-app.js
+!db-manager.js
+!memory-processor.js
+!processing-worker.js
+!graph-renderer.js
+!timeline-view.js
+!entity-panel.js
+!search-engine.js
+
+# Except the README files
+!README.md
+!ASSETS_README.md
+!docs/
+!docs/*.md
 
 # And this gitignore itself
 !.gitignore
