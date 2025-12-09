@@ -4,5 +4,10 @@
 # Except the optimized HTML file
 !chat-optimized.html
 
+# Except the README files
+!README.md
+!ASSETS_README.md
+!docs/
+
 # And this gitignore itself
 !.gitignore
