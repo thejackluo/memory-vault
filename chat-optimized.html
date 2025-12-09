@@ -620,11 +620,15 @@
             const response = await fetch('assets.json');
             if (!response.ok) {
               console.warn('assets.json not found, file references may not work');
+              console.warn('Make sure assets.json is in the same directory as this HTML file');
               assetsJson = {};
               return;
             }
             assetsJson = await response.json();
-            console.log('Successfully loaded assets.json');
+            var assetCount = Object.keys(assetsJson).length;
+            console.log('Successfully loaded assets.json with ' + assetCount + ' assets');
+            console.log('Note: Image/audio/video files must be in the same directory or subdirectories');
+            console.log('Example: If assets.json has "file_xxx.jpg", that file must exist locally');
           } catch (error) {
             console.warn('Failed to load assets.json:', error);
             assetsJson = {};
@@ -1154,9 +1158,62 @@
               // Clean ChatGPT markup first
               var cleanedText = cleanChatGPTMarkup(part.text);
 
+              // Protect LaTeX from markdown processing
+              var latexBlocks = [];
+              var latexIndex = 0;
+
+              // Protect display math \[ \]
+              cleanedText = cleanedText.replace(/\\\[([\s\S]*?)\\\]/g, function(match) {
+                var placeholder = '___LATEX_DISPLAY_' + latexIndex + '___';
+                latexBlocks[latexIndex] = match;
+                latexIndex++;
+                return placeholder;
+              });
+
+              // Protect display math $$ $$
+              cleanedText = cleanedText.replace(/\$\$([\s\S]*?)\$\$/g, function(match) {
+                var placeholder = '___LATEX_DISPLAY_' + latexIndex + '___';
+                latexBlocks[latexIndex] = match;
+                latexIndex++;
+                return placeholder;
+              });
+
+              // Protect inline math \( \)
+              cleanedText = cleanedText.replace(/\\\(([\s\S]*?)\\\)/g, function(match) {
+                var placeholder = '___LATEX_INLINE_' + latexIndex + '___';
+                latexBlocks[latexIndex] = match;
+                latexIndex++;
+                return placeholder;
+              });
+
+              // Protect inline math $ $ (but be careful not to catch currency)
+              cleanedText = cleanedText.replace(/\$([^\s$][^$]*?)\$/g, function(match, content) {
+                // Only treat as LaTeX if it contains backslashes or common LaTeX commands
+                if (content.indexOf('\\') !== -1 || /[a-zA-Z]{2,}/.test(content)) {
+                  var placeholder = '___LATEX_INLINE_' + latexIndex + '___';
+                  latexBlocks[latexIndex] = match;
+                  latexIndex++;
+                  return placeholder;
+                }
+                return match;
+              });
+
               // Use marked.js to parse markdown
               try {
                 contentDiv.innerHTML = marked.parse(cleanedText);
+
+                // Restore LaTeX blocks
+                var html = contentDiv.innerHTML;
+                for (var i = 0; i < latexBlocks.length; i++) {
+                  if (latexBlocks[i]) {
+                    // Try both display and inline placeholders
+                    var displayPlaceholder = '___LATEX_DISPLAY_' + i + '___';
+                    var inlinePlaceholder = '___LATEX_INLINE_' + i + '___';
+                    html = html.replace(displayPlaceholder, latexBlocks[i]);
+                    html = html.replace(inlinePlaceholder, latexBlocks[i]);
+                  }
+                }
+                contentDiv.innerHTML = html;
 
                 // Process links to add title attributes for hover display
                 var links = contentDiv.getElementsByTagName('a');
