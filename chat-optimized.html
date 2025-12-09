@@ -1,0 +1,951 @@
+<html>
+  <head>
+    <title>ChatGPT Data Export (Optimized)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        background: #f9fafb;
+        min-height: 100vh;
+        display: flex;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #374151;
+      }
+
+      #sidebar {
+        width: 280px;
+        background: #ffffff;
+        border-right: 1px solid #e5e7eb;
+        overflow-y: auto;
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        padding: 0;
+        z-index: 1000;
+      }
+
+      #sidebar h2 {
+        font-size: 14px;
+        font-weight: 600;
+        margin: 0;
+        padding: 16px 12px 12px 12px;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        position: sticky;
+        top: 0;
+        background: white;
+        border-bottom: 1px solid #f3f4f6;
+        z-index: 10;
+      }
+
+      .year-group {
+        margin-bottom: 8px;
+      }
+
+      .year-header {
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: background 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .year-header:hover {
+        background: #f9fafb;
+      }
+
+      .year-count {
+        font-size: 11px;
+        color: #9ca3af;
+        font-weight: 400;
+      }
+
+      .month-group {
+        margin-bottom: 4px;
+      }
+
+      .month-header {
+        font-size: 12px;
+        font-weight: 500;
+        color: #4b5563;
+        padding: 6px 12px 6px 24px;
+        cursor: pointer;
+        transition: background 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .month-header:hover {
+        background: #f9fafb;
+      }
+
+      .week-group {
+        margin-bottom: 2px;
+      }
+
+      .week-header {
+        font-size: 11px;
+        font-weight: 500;
+        color: #6b7280;
+        padding: 4px 12px 4px 36px;
+        cursor: pointer;
+        transition: background 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .week-header:hover {
+        background: #f9fafb;
+      }
+
+      .conversation-link {
+        display: block;
+        padding: 8px 12px 8px 48px;
+        color: #374151;
+        text-decoration: none;
+        font-size: 13px;
+        transition: background 0.15s;
+        cursor: pointer;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        border-left: 2px solid transparent;
+      }
+
+      .conversation-link:hover {
+        background: #f3f4f6;
+      }
+
+      .conversation-link.active {
+        background: #f3f4f6;
+        border-left-color: #10a37f;
+        color: #10a37f;
+        font-weight: 500;
+      }
+
+      #mainContent {
+        margin-left: 280px;
+        flex: 1;
+        padding: 0;
+        overflow-y: auto;
+        background: #f9fafb;
+      }
+
+      .content-inner {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      #loadingMessage {
+        font-size: 16px;
+        font-weight: 500;
+        padding: 24px;
+        text-align: center;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        margin-bottom: 16px;
+        color: #6b7280;
+      }
+
+      .error {
+        color: #dc2626;
+      }
+
+      .success {
+        color: #059669;
+      }
+
+      #loadMoreButton {
+        background: white;
+        color: #374151;
+        border: 1px solid #d1d5db;
+        padding: 10px 24px;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+        margin: 16px auto;
+        display: block;
+      }
+
+      #loadMoreButton:hover {
+        background: #f9fafb;
+        border-color: #9ca3af;
+      }
+
+      #loadMoreButton:active {
+        background: #f3f4f6;
+      }
+
+      #root {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+
+      .conversation {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 24px;
+        margin-bottom: 16px;
+        scroll-margin-top: 24px;
+      }
+
+      .conversation h4 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #111827;
+      }
+
+      .conversation .date {
+        font-size: 13px;
+        color: #6b7280;
+        margin-bottom: 20px;
+      }
+
+      .message {
+        margin: 16px 0;
+        padding: 0;
+      }
+
+      .message-content {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        line-height: 1.7;
+        color: #374151;
+        padding-top: 8px;
+      }
+
+      /* Markdown styling */
+      .message-content h1, .message-content h2, .message-content h3 {
+        margin-top: 20px;
+        margin-bottom: 10px;
+        font-weight: 600;
+        color: #1a202c;
+      }
+
+      .message-content h1 { font-size: 1.8em; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; }
+      .message-content h2 { font-size: 1.5em; }
+      .message-content h3 { font-size: 1.2em; }
+
+      .message-content p {
+        margin: 10px 0;
+      }
+
+      .message-content code {
+        background: #f3f4f6;
+        padding: 2px 5px;
+        border-radius: 4px;
+        font-family: 'Fira Code', 'Courier New', monospace;
+        font-size: 0.875em;
+        color: #1f2937;
+        border: 1px solid #e5e7eb;
+      }
+
+      .message-content pre {
+        background: #1f2937;
+        color: #e5e7eb;
+        padding: 16px;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 16px 0;
+        border: 1px solid #374151;
+      }
+
+      .message-content pre code {
+        background: transparent;
+        color: inherit;
+        padding: 0;
+      }
+
+      .message-content ul, .message-content ol {
+        margin: 10px 0;
+        padding-left: 30px;
+      }
+
+      .message-content li {
+        margin: 5px 0;
+      }
+
+      .message-content blockquote {
+        border-left: 4px solid #667eea;
+        padding-left: 15px;
+        margin: 15px 0;
+        color: #4a5568;
+        font-style: italic;
+      }
+
+      .message-content table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 15px 0;
+      }
+
+      .message-content table th,
+      .message-content table td {
+        border: 1px solid #e2e8f0;
+        padding: 8px 12px;
+        text-align: left;
+      }
+
+      .message-content table th {
+        background: #f7fafc;
+        font-weight: 600;
+      }
+
+      .message-content strong {
+        font-weight: 700;
+        color: #1a202c;
+      }
+
+      .message-content em {
+        font-style: italic;
+      }
+
+      .message .author {
+        font-weight: 600;
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: #111827;
+      }
+
+      .message .author.user {
+        color: #111827;
+      }
+
+      .message .author.assistant,
+      .message .author.chatgpt {
+        color: #111827;
+      }
+
+      .message a {
+        color: #10a37f;
+        text-decoration: none;
+      }
+
+      .message a:hover {
+        text-decoration: underline;
+      }
+
+      .stats {
+        background: #f9fafb;
+        padding: 12px;
+        border-bottom: 1px solid #e5e7eb;
+        position: sticky;
+        top: 50px;
+        z-index: 5;
+      }
+
+      .stats-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 0;
+        font-size: 12px;
+      }
+
+      .stats-label {
+        color: #6b7280;
+      }
+
+      .stats-value {
+        font-weight: 600;
+        color: #111827;
+      }
+
+      .conversation.not-loaded {
+        opacity: 0.4;
+        pointer-events: none;
+      }
+
+      .load-period-btn {
+        background: #f3f4f6;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 11px;
+        color: #6b7280;
+        cursor: pointer;
+        margin-left: auto;
+        transition: all 0.15s;
+      }
+
+      .load-period-btn:hover {
+        background: #e5e7eb;
+        color: #374151;
+      }
+
+      .load-period-btn.loaded {
+        background: #d1fae5;
+        border-color: #10a37f;
+        color: #047857;
+      }
+
+      /* Scrollbar styling */
+      ::-webkit-scrollbar {
+        width: 10px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: rgba(102, 126, 234, 0.5);
+        border-radius: 5px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(102, 126, 234, 0.8);
+      }
+    </style>
+    <script>
+        var jsonData = [];
+        var assetsJson = {}; // Will be loaded dynamically
+
+        // Function to load conversations.json dynamically
+        async function loadConversations() {
+          const loadingMsg = document.getElementById("loadingMessage");
+          loadingMsg.textContent = "Loading conversations.json (this may take a moment for large files)...";
+
+          try {
+            const response = await fetch('conversations.json');
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            loadingMsg.textContent = "Parsing JSON data...";
+            jsonData = await response.json();
+
+            loadingMsg.textContent = `Successfully loaded ${jsonData.length} conversations!`;
+            loadingMsg.className = "success";
+
+            // Wait a brief moment to show success message
+            setTimeout(() => {
+              loadingMsg.style.display = "none";
+              document.getElementById("loadMoreButton").style.display = "block";
+              initializeAndRender();
+            }, 500);
+
+          } catch (error) {
+            loadingMsg.textContent = `Error loading conversations: ${error.message}. Make sure conversations.json is in the same directory.`;
+            loadingMsg.className = "error";
+            console.error('Failed to load conversations:', error);
+          }
+        }
+
+        // Function to load assets.json dynamically
+        async function loadAssets() {
+          const loadingMsg = document.getElementById("loadingMessage");
+          loadingMsg.textContent = "Loading assets.json...";
+
+          try {
+            const response = await fetch('assets.json');
+            if (!response.ok) {
+              console.warn('assets.json not found, file references may not work');
+              assetsJson = {};
+              return;
+            }
+            assetsJson = await response.json();
+            console.log('Successfully loaded assets.json');
+          } catch (error) {
+            console.warn('Failed to load assets.json:', error);
+            assetsJson = {};
+          }
+        }
+
+        // Extract messages from a conversation (oldest to newest) - full version with multimodal support
+        function getConversationMessages(conversation) {
+          var messages = [];
+          var currentNode = conversation.current_node;
+          while (currentNode != null) {
+              var node = conversation.mapping[currentNode];
+              if (
+                  node.message &&
+                  node.message.content &&
+                  node.message.content.parts &&
+                  node.message.content.parts.length > 0 &&
+                  (node.message.author.role !== "system"  || node.message.metadata.is_user_system_message)
+              ) {
+                  var author = node.message.author.role;
+                  if (author === "assistant" || author === "tool") {
+                      author = "ChatGPT";
+                  } else if (author === "system" && node.message.metadata.is_user_system_message) {
+                      author = "Custom user info"
+                  }
+                  if (node.message.content.content_type == "text" || node.message.content.content_type == "multimodal_text") {
+                    var parts = [];
+                    for (var i = 0; i < node.message.content.parts.length; i++) {
+                      var part = node.message.content.parts[i];
+                      if (typeof part === "string" && part.length > 0) {
+                        parts.push({text: part});
+                      } else if (part.content_type == "audio_transcription") {
+                        parts.push({transcript: part.text});
+                      } else if (part.content_type == "audio_asset_pointer" || part.content_type == "image_asset_pointer" || part.content_type == "video_container_asset_pointer") {
+                        parts.push({asset: part});
+                      } else if (part.content_type == "real_time_user_audio_video_asset_pointer") {
+                        if (part.audio_asset_pointer) {
+                          parts.push({asset: part.audio_asset_pointer});
+                        }
+                        if (part.video_container_asset_pointer) {
+                          parts.push({asset: part.video_container_asset_pointer});
+                        }
+                        for (var j = 0; j < part.frames_asset_pointers.length; j++) {
+                          parts.push({asset: part.frames_asset_pointers[j]});
+                        }
+                      }
+                    }
+                    if (parts.length > 0) {
+                      messages.push({ author, parts: parts });
+                    }
+                  }
+              }
+              currentNode = node.parent;
+          }
+          return messages.reverse();
+        }
+
+      // How many conversations to render per batch
+      var CONVERSATIONS_PER_BATCH = 20;
+
+      var conversations = [];
+      var state = {};
+
+      function initializeAndRender() {
+        // Sort conversations oldest -> newest using create_time if available
+        conversations = jsonData.slice();
+        conversations.sort(function (a, b) {
+          var ta = a.create_time || 0;
+          var tb = b.create_time || 0;
+          return ta - tb;  // Oldest first
+        });
+
+        // Build sidebar navigation
+        buildSidebar();
+
+        // Global state - track which conversation we're on
+        state = {
+          convIndex: 0  // which conversation we are on
+        };
+
+        // Render the first batch
+        renderNextBatch();
+      }
+
+      // Helper to get week number and year
+      function getWeekInfo(date) {
+        var d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+        var yearStart = new Date(d.getFullYear(), 0, 1);
+        var weekNum = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        return { week: weekNum, year: d.getFullYear() };
+      }
+
+      // Helper to get date range for a week
+      function getWeekRange(year, week) {
+        var simple = new Date(year, 0, 1 + (week - 1) * 7);
+        var dow = simple.getDay();
+        var weekStart = simple;
+        if (dow <= 4)
+          weekStart.setDate(simple.getDate() - simple.getDay() + 1);
+        else
+          weekStart.setDate(simple.getDate() + 8 - simple.getDay());
+
+        var weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+
+        var format = function(d) {
+          return (d.getMonth() + 1) + '/' + d.getDate();
+        };
+
+        return format(weekStart) + ' - ' + format(weekEnd);
+      }
+
+      // Track loaded periods
+      var loadedPeriods = new Set();
+
+      // Build sidebar navigation organized by year, month, and week
+      function buildSidebar() {
+        var sidebar = document.getElementById("sidebar");
+        var sidebarContent = document.getElementById("sidebarContent");
+        sidebarContent.innerHTML = "";
+
+        // Count total messages
+        var totalMessages = 0;
+        conversations.forEach(function(conv) {
+          if (!conv._messages) {
+            conv._messages = getConversationMessages(conv);
+          }
+          totalMessages += conv._messages.length;
+        });
+
+        // Organize conversations by year, month, and week
+        var byYear = {};
+
+        conversations.forEach(function(conv, index) {
+          var date = new Date((conv.create_time || 0) * 1000);
+          var year = date.getFullYear();
+          var month = date.getMonth();
+          var monthName = date.toLocaleString('default', { month: 'long' });
+          var weekInfo = getWeekInfo(date);
+          var weekKey = weekInfo.week;
+
+          if (!byYear[year]) {
+            byYear[year] = {};
+          }
+          if (!byYear[year][month]) {
+            byYear[year][month] = {
+              name: monthName,
+              weeks: {}
+            };
+          }
+          if (!byYear[year][month].weeks[weekKey]) {
+            byYear[year][month].weeks[weekKey] = {
+              range: getWeekRange(year, weekKey),
+              conversations: []
+            };
+          }
+
+          var periodKey = year + '-' + month + '-' + weekKey;
+          byYear[year][month].weeks[weekKey].conversations.push({
+            index: index,
+            title: conv.title || "(no title)",
+            date: date,
+            conv: conv,
+            periodKey: periodKey
+          });
+        });
+
+        // Build HTML for sidebar
+        var years = Object.keys(byYear).sort().reverse();
+
+        years.forEach(function(year) {
+          var yearDiv = document.createElement("div");
+          yearDiv.className = "year-group";
+
+          var yearConvCount = 0;
+          Object.values(byYear[year]).forEach(function(monthData) {
+            Object.values(monthData.weeks).forEach(function(weekData) {
+              yearConvCount += weekData.conversations.length;
+            });
+          });
+
+          var yearHeader = document.createElement("div");
+          yearHeader.className = "year-header";
+          yearHeader.innerHTML = `<span>${year}</span><span class="year-count">${yearConvCount}</span>`;
+          yearDiv.appendChild(yearHeader);
+
+          var months = Object.keys(byYear[year]).sort(function(a, b) { return b - a; });
+
+          months.forEach(function(monthNum) {
+            var monthData = byYear[year][monthNum];
+            var monthDiv = document.createElement("div");
+            monthDiv.className = "month-group";
+
+            var monthConvCount = 0;
+            Object.values(monthData.weeks).forEach(function(weekData) {
+              monthConvCount += weekData.conversations.length;
+            });
+
+            var monthHeader = document.createElement("div");
+            monthHeader.className = "month-header";
+            monthHeader.innerHTML = `<span>${monthData.name}</span><span class="year-count">${monthConvCount}</span>`;
+            monthDiv.appendChild(monthHeader);
+
+            var weeks = Object.keys(monthData.weeks).sort(function(a, b) { return b - a; });
+
+            weeks.forEach(function(weekKey) {
+              var weekData = monthData.weeks[weekKey];
+              var weekDiv = document.createElement("div");
+              weekDiv.className = "week-group";
+
+              var periodKey = year + '-' + monthNum + '-' + weekKey;
+              var isLoaded = loadedPeriods.has(periodKey);
+
+              var weekHeader = document.createElement("div");
+              weekHeader.className = "week-header";
+
+              var loadBtn = document.createElement("button");
+              loadBtn.className = "load-period-btn" + (isLoaded ? " loaded" : "");
+              loadBtn.textContent = isLoaded ? "Loaded" : "Load";
+              loadBtn.onclick = function(e) {
+                e.stopPropagation();
+                loadPeriod(periodKey, weekData.conversations);
+              };
+
+              weekHeader.innerHTML = `<span>Week ${weekKey} (${weekData.range}) - ${weekData.conversations.length}</span>`;
+              weekHeader.appendChild(loadBtn);
+              weekDiv.appendChild(weekHeader);
+
+              weekData.conversations.forEach(function(item) {
+                var link = document.createElement("a");
+                link.className = "conversation-link";
+                link.textContent = item.title;
+                link.dataset.convId = "conv-" + item.index;
+                link.dataset.periodKey = periodKey;
+                link.onclick = function(e) {
+                  e.preventDefault();
+
+                  if (!loadedPeriods.has(periodKey)) {
+                    loadPeriod(periodKey, weekData.conversations);
+                  }
+
+                  scrollToConversation(item.conv);
+
+                  document.querySelectorAll('.conversation-link').forEach(function(l) {
+                    l.classList.remove('active');
+                  });
+                  link.classList.add('active');
+                };
+                weekDiv.appendChild(link);
+              });
+
+              monthDiv.appendChild(weekDiv);
+            });
+
+            yearDiv.appendChild(monthDiv);
+          });
+
+          sidebarContent.appendChild(yearDiv);
+        });
+
+        // Add stats
+        var stats = document.createElement("div");
+        stats.className = "stats";
+        stats.innerHTML = `
+          <div class="stats-item">
+            <span class="stats-label">Conversations:</span>
+            <span class="stats-value">${conversations.length.toLocaleString()}</span>
+          </div>
+          <div class="stats-item">
+            <span class="stats-label">Messages:</span>
+            <span class="stats-value">${totalMessages.toLocaleString()}</span>
+          </div>
+          <div class="stats-item">
+            <span class="stats-label">Date Range:</span>
+            <span class="stats-value">${years[years.length - 1]} - ${years[0]}</span>
+          </div>
+        `;
+        sidebar.insertBefore(stats, sidebarContent);
+      }
+
+      // Load conversations from a specific period
+      function loadPeriod(periodKey, conversations) {
+        if (loadedPeriods.has(periodKey)) {
+          return;
+        }
+
+        loadedPeriods.add(periodKey);
+
+        var root = document.getElementById("root");
+
+        conversations.forEach(function(item) {
+          var conv = item.conv;
+
+          if (!conv._messages) {
+            conv._messages = getConversationMessages(conv);
+          }
+
+          var convDiv = ensureConversationDiv(conv, root);
+
+          // Remove not-loaded class if present
+          convDiv.classList.remove('not-loaded');
+
+          var msgs = conv._messages;
+          msgs.forEach(function(msg) {
+            renderMessage(convDiv, msg);
+          });
+        });
+
+        // Update button state
+        var btn = document.querySelector('.load-period-btn[data-period="' + periodKey + '"]');
+        if (btn) {
+          btn.classList.add('loaded');
+          btn.textContent = 'Loaded';
+        }
+
+        // Update all load buttons for this period
+        document.querySelectorAll('.load-period-btn').forEach(function(button) {
+          var header = button.closest('.week-header');
+          if (header && header.querySelector('span').textContent.includes('Week')) {
+            var weekData = button.closest('.week-group').dataset;
+            if (button.closest('.week-group').querySelector('.conversation-link[data-period-key="' + periodKey + '"]')) {
+              button.classList.add('loaded');
+              button.textContent = 'Loaded';
+            }
+          }
+        });
+      }
+
+      // Scroll to a specific conversation
+      function scrollToConversation(conv) {
+        if (conv._dom) {
+          conv._dom.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+
+      // Ensure each conversation has a container div in the DOM
+      function ensureConversationDiv(conversation, root) {
+        if (conversation._dom) {
+          return conversation._dom;
+        }
+        var div = document.createElement("div");
+        div.className = "conversation";
+
+        var title = document.createElement("h4");
+        title.textContent = conversation.title || "(no title)";
+        div.appendChild(title);
+
+        // Add date if available
+        if (conversation.create_time) {
+          var dateDiv = document.createElement("div");
+          dateDiv.className = "date";
+          var date = new Date(conversation.create_time * 1000);
+          dateDiv.textContent = date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          div.appendChild(dateDiv);
+        }
+
+        root.appendChild(div);
+        conversation._dom = div;
+        return div;
+      }
+
+      // Clean ChatGPT-specific markup
+      function cleanChatGPTMarkup(text) {
+        if (!text) return text;
+
+        // Remove tool invocation markers like 【turn0calculator0】
+        text = text.replace(/【[^】]*】/g, '');
+
+        // Clean up citation markers like citeturn0search5
+        text = text.replace(/cite(turn\d+search\d+)+/gi, '');
+
+        // Remove other ChatGPT internal markers
+        text = text.replace(/\u3010[^\u3011]*\u3011/g, ''); // Unicode brackets
+
+        // Clean up multiple spaces
+        text = text.replace(/\s+/g, ' ').trim();
+
+        return text;
+      }
+
+      // Render a single message object {author, parts}
+      function renderMessage(container, msg) {
+        var message = document.createElement("div");
+        message.className = "message";
+
+        var authorDiv = document.createElement("div");
+        var authorClass = msg.author.toLowerCase().replace(/\s+/g, '-');
+        authorDiv.className = "author " + authorClass;
+        authorDiv.textContent = msg.author;
+        message.appendChild(authorDiv);
+
+        if (msg.parts) {
+          msg.parts.forEach(function (part) {
+            var contentDiv = document.createElement("div");
+            contentDiv.className = "message-content";
+
+            if (part.text) {
+              // Clean ChatGPT markup first
+              var cleanedText = cleanChatGPTMarkup(part.text);
+
+              // Use marked.js to parse markdown
+              try {
+                contentDiv.innerHTML = marked.parse(cleanedText);
+              } catch (e) {
+                // Fallback to plain text if markdown parsing fails
+                contentDiv.textContent = cleanedText;
+              }
+            } else if (part.transcript) {
+              contentDiv.innerHTML = "<em>[Transcript]: " + part.transcript + "</em>";
+            } else if (part.asset && assetsJson) {
+              var link = assetsJson[part.asset.asset_pointer];
+              if (link) {
+                var ext = link.split('.').pop().toLowerCase();
+                var isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
+                var isAudio = ['mp3', 'wav', 'ogg', 'm4a'].includes(ext);
+                var isVideo = ['mp4', 'webm', 'mov'].includes(ext);
+
+                if (isImage) {
+                  contentDiv.innerHTML = '<div style="margin: 10px 0;"><img src="' + link + '" style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb;" alt="Image"></div>';
+                } else if (isAudio) {
+                  contentDiv.innerHTML = '<div style="margin: 10px 0;"><audio controls style="width: 100%;"><source src="' + link + '"></audio></div>';
+                } else if (isVideo) {
+                  contentDiv.innerHTML = '<div style="margin: 10px 0;"><video controls style="max-width: 100%; border-radius: 8px;"><source src="' + link + '"></video></div>';
+                } else {
+                  contentDiv.innerHTML = '<strong>[File]:</strong> <a href="' + link + '" target="_blank">' + link.split('/').pop() + '</a>';
+                }
+              } else {
+                contentDiv.innerHTML = "<em>[File]: -Deleted-</em>";
+              }
+            }
+
+            message.appendChild(contentDiv);
+          });
+        }
+
+        container.appendChild(message);
+      }
+
+      // Initial render - just show placeholders, load on demand
+      function renderNextBatch() {
+        // Don't auto-load anything - user will click to load specific periods
+        document.getElementById("loadMoreButton").style.display = "none";
+      }
+
+      // Initialize when page loads
+      window.onload = async function () {
+        // Load assets first (optional but helpful for file references)
+        await loadAssets();
+
+        // Load conversations (required)
+        await loadConversations();
+
+        // Set up load more button
+        var btn = document.getElementById("loadMoreButton");
+        btn.onclick = renderNextBatch;
+      };
+    </script>
+  </head>
+  <body>
+    <div id="sidebar">
+      <h2>Conversations</h2>
+      <div id="sidebarContent"></div>
+    </div>
+    <div id="mainContent">
+      <div class="content-inner">
+        <div id="loadingMessage">Initializing...</div>
+        <button id="loadMoreButton" style="display: none;">Load 20 more conversations</button>
+        <div id="root"></div>
+      </div>
+    </div>
+  </body>
+</html>

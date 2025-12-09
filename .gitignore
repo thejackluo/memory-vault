@@ -1,0 +1,8 @@
+# Ignore everything
+*
+
+# Except the optimized HTML file
+!chat-optimized.html
+
+# And this gitignore itself
+!.gitignore
