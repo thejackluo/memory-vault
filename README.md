@@ -1,10 +1,38 @@
 # Memory Vault
 
-A viewer and archive for ChatGPT conversation exports, providing a beautiful and optimized interface to browse, search, and explore your ChatGPT conversation history.
+A complete toolkit for ChatGPT conversation exports with two powerful tools:
+
+1. **📖 Conversation Viewer** - Browse and read your conversations with a beautiful interface
+2. **🧠 Memory Graph** - Transform conversations into an interactive knowledge graph
+
+## Quick Navigation
+
+- 🚀 **New here?** Start with [`QUICK_START.md`](QUICK_START.md) to get the Memory Graph running in 3 minutes
+- 📖 **Conversation Viewer?** See [Getting Started](#getting-started) below for the classic viewer
+- 🧠 **Memory Graph Details?** See [`MEMORY_GRAPH_README.md`](MEMORY_GRAPH_README.md) for complete documentation
+
+---
 
 ## Overview
 
-**Memory Vault** transforms your ChatGPT data export into an elegant, searchable, and feature-rich browsing experience. Instead of dealing with raw JSON files, you get a polished web interface that makes it easy to revisit and explore your conversations with ChatGPT.
+**Memory Vault** provides two complementary ways to explore your ChatGPT data:
+
+### 🧠 Memory Graph (NEW in v3.0.0)
+An interactive knowledge graph that extracts and visualizes entities from your conversations:
+- Discover people, projects, knowledge, questions, thoughts, and patterns
+- See connections and relationships between entities
+- Timeline view showing how your interests evolved
+- Backlinks like Obsidian/Logseq
+- Fast search across all entities
+- **➡️ [Quick Start Guide](QUICK_START.md)** | **[Full Documentation](MEMORY_GRAPH_README.md)**
+
+### 📖 Conversation Viewer
+A polished interface for reading your conversation history:
+- Browse conversations chronologically
+- Full-text search
+- LaTeX and markdown rendering
+- Media support (images, audio, video)
+- Clean, modern design
 
 ## Features
 
@@ -19,7 +47,27 @@ A viewer and archive for ChatGPT conversation exports, providing a beautiful and
 
 ## What's Included
 
-### HTML Viewers
+### 🧠 Memory Graph System (v3.0.0)
+
+**Main Application:**
+- **`memory-graph.html`** - Interactive knowledge graph interface
+- **`memory-graph.css`** - Modern styling for the graph system
+- **`memory-graph-app.js`** - Application controller
+
+**Core Components:**
+- **`db-manager.js`** - IndexedDB storage for entities and relationships
+- **`memory-processor.js`** - Intelligent entity extraction engine
+- **`graph-renderer.js`** - High-performance Canvas visualization
+- **`timeline-view.js`** - Timeline with swim lanes by entity type
+- **`entity-panel.js`** - Detail panel with backlinks (Obsidian-style)
+- **`search-engine.js`** - Fast full-text search with fuzzy matching
+- **`processing-worker.js`** - Optional Web Worker for background processing
+
+**Documentation:**
+- **[`QUICK_START.md`](QUICK_START.md)** - Get started in 3 minutes
+- **[`MEMORY_GRAPH_README.md`](MEMORY_GRAPH_README.md)** - Complete documentation
+
+### 📖 Conversation Viewers
 
 - **`index.html`** - Modern modular viewer with separate CSS/JS files (recommended)
 - **`chat-optimized.html`** - The original all-in-one viewer
@@ -27,8 +75,7 @@ A viewer and archive for ChatGPT conversation exports, providing a beautiful and
 - **`chat.html`** - Original viewer version
 - **`test_latex_links.html`** - Testing interface for LaTeX and link rendering
 
-### Modular Files
-
+**Modular Files (v2.0.0):**
 - **`app.js`** - Application logic with modern ES6+ JavaScript (let/const, arrow functions, template literals)
 - **`style.css`** - All styling and CSS rules for the viewer
 
@@ -44,9 +91,30 @@ Your ChatGPT export includes multiple JSON files:
 - **`shopping.json`** - Shopping-related conversations and data
 - **`assets.json`** - Mapping of media asset IDs to file paths
 
-### Documentation
-
+**Viewer Documentation:**
 - **`ASSETS_README.md`** - Detailed guide on handling images, audio, and video files
+- **`README.md`** - This file (viewer documentation)
+
+## Which Tool Should I Use?
+
+### Use Memory Graph When You Want To:
+- 🔍 **Discover patterns** and connections across conversations
+- 👥 **See all people** you've mentioned in one place
+- 🚀 **Track projects** you've worked on over time
+- 💡 **Review what you've learned** in a knowledge base
+- 📅 **Visualize timeline** of your conversation topics
+- 🔗 **Navigate relationships** between entities (like Obsidian)
+- ⚡ **Search entities** across all conversations instantly
+
+### Use Conversation Viewer When You Want To:
+- 📖 **Read full conversations** from start to finish
+- 🔍 **Search specific phrases** within conversation text
+- 📐 **View math formulas** with proper LaTeX rendering
+- 🖼️ **See images/media** embedded in conversations
+- 📱 **Browse chronologically** through conversation history
+- 💬 **Export or copy** specific conversation threads
+
+**💡 Pro Tip:** Use both! Start with Memory Graph to discover interesting entities, then use the Conversation Viewer to read the full conversations in detail.
 
 ## Getting Started
 
@@ -103,23 +171,41 @@ If your conversations include images, audio, or video:
 
 ```
 memory-vault/
-├── README.md                      # This file
+├── README.md                      # This file (main documentation)
+├── QUICK_START.md                # 3-minute quick start for Memory Graph
+├── MEMORY_GRAPH_README.md        # Complete Memory Graph documentation
 ├── ASSETS_README.md              # Media handling guide
-├── index.html                    # Modern modular viewer (recommended)
-├── app.js                        # Application logic (ES6+)
-├── style.css                     # Viewer styles
-├── chat-optimized.html           # All-in-one viewer (legacy)
-├── chat-fast.html                # Lightweight viewer
-├── chat.html                     # Original viewer
-├── test_latex_links.html         # Testing interface
-├── conversations.json            # Your conversation history
-├── assets.json                   # Media asset mappings
-├── group_chats.json              # Group conversations
-├── shared_conversations.json     # Shared conversations
-├── message_feedback.json         # Message feedback data
-├── shopping.json                 # Shopping data
-├── user.json                     # User profile
-└── [media files]                 # Images, audio, video (if any)
+│
+├── Memory Graph System (v3.0.0)
+│   ├── memory-graph.html         # Main graph application
+│   ├── memory-graph.css          # Graph styling
+│   ├── memory-graph-app.js       # Application controller
+│   ├── db-manager.js             # IndexedDB storage
+│   ├── memory-processor.js       # Entity extraction
+│   ├── graph-renderer.js         # Canvas visualization
+│   ├── timeline-view.js          # Timeline component
+│   ├── entity-panel.js           # Detail panel
+│   ├── search-engine.js          # Search engine
+│   └── processing-worker.js      # Web Worker (optional)
+│
+├── Conversation Viewer (v2.0.0)
+│   ├── index.html                # Modern modular viewer (recommended)
+│   ├── app.js                    # Application logic (ES6+)
+│   ├── style.css                 # Viewer styles
+│   ├── chat-optimized.html       # All-in-one viewer (legacy)
+│   ├── chat-fast.html            # Lightweight viewer
+│   ├── chat.html                 # Original viewer
+│   └── test_latex_links.html     # Testing interface
+│
+└── Your Data Files (from ChatGPT export)
+    ├── conversations.json        # Your conversation history
+    ├── assets.json               # Media asset mappings
+    ├── group_chats.json          # Group conversations
+    ├── shared_conversations.json # Shared conversations
+    ├── message_feedback.json     # Message feedback data
+    ├── shopping.json             # Shopping data
+    ├── user.json                 # User profile
+    └── [media files]             # Images, audio, video (if any)
 ```
 
 ## Privacy & Security
