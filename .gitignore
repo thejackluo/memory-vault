@@ -1,8 +1,13 @@
 # Ignore everything
 *
 
-# Except the optimized HTML file
+# Except the HTML files
 !chat-optimized.html
+!index.html
+
+# Except the modular files
+!app.js
+!style.css
 
 # Except the README files
 !README.md
