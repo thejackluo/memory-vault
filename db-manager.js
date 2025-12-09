@@ -6,7 +6,7 @@
 class DBManager {
   constructor() {
     this.dbName = 'MemoryGraphDB';
-    this.dbVersion = 1;
+    this.dbVersion = 2; // Updated to version 2 for new stores
     this.db = null;
   }
 
@@ -66,6 +66,19 @@ class DBManager {
         // Create metadata store for global settings
         if (!db.objectStoreNames.contains('metadata')) {
           db.createObjectStore('metadata', { keyPath: 'key' });
+        }
+
+        // Create processing history store to track all processing operations
+        if (!db.objectStoreNames.contains('processingHistory')) {
+          const historyStore = db.createObjectStore('processingHistory', { autoIncrement: true, keyPath: 'id' });
+          historyStore.createIndex('timestamp', 'timestamp', { unique: false });
+        }
+
+        // Create conversation status store to track which conversations have been processed
+        if (!db.objectStoreNames.contains('conversationStatus')) {
+          const statusStore = db.createObjectStore('conversationStatus', { keyPath: 'conversationId' });
+          statusStore.createIndex('processed', 'processed', { unique: false });
+          statusStore.createIndex('lastProcessed', 'lastProcessed', { unique: false });
         }
       };
     });
@@ -289,10 +302,87 @@ class DBManager {
   }
 
   /**
+   * Save processing history entry
+   */
+  async addProcessingHistory(entry) {
+    return this.performTransaction('processingHistory', 'readwrite', (store) => {
+      return store.put({
+        timestamp: Date.now(),
+        startIndex: entry.startIndex,
+        endIndex: entry.endIndex,
+        conversationsProcessed: entry.conversationsProcessed,
+        entitiesFound: entry.entitiesFound,
+        ...entry
+      });
+    });
+  }
+
+  /**
+   * Get all processing history
+   */
+  async getProcessingHistory() {
+    return this.performTransaction('processingHistory', 'readonly', (store) => {
+      return store.getAll();
+    });
+  }
+
+  /**
+   * Mark conversation as processed
+   */
+  async markConversationProcessed(conversationId, index) {
+    return this.performTransaction('conversationStatus', 'readwrite', (store) => {
+      return store.put({
+        conversationId: conversationId,
+        processed: true,
+        lastProcessed: Date.now(),
+        index: index
+      });
+    });
+  }
+
+  /**
+   * Get conversation status
+   */
+  async getConversationStatus(conversationId) {
+    return this.performTransaction('conversationStatus', 'readonly', (store) => {
+      return store.get(conversationId);
+    });
+  }
+
+  /**
+   * Get all processed conversation IDs
+   */
+  async getAllProcessedConversations() {
+    return this.performTransaction('conversationStatus', 'readonly', (store) => {
+      const index = store.index('processed');
+      return index.getAll(true);
+    });
+  }
+
+  /**
+   * Get processing statistics
+   */
+  async getProcessingStats(totalConversations) {
+    const processed = await this.getAllProcessedConversations();
+    const processedUpToIndex = await this.getMetadata('processedUpToIndex') || 0;
+    const history = await this.getProcessingHistory();
+
+    return {
+      totalProcessed: processed.length,
+      totalConversations: totalConversations,
+      processedUpToIndex: processedUpToIndex,
+      remaining: Math.max(0, totalConversations - processedUpToIndex),
+      percentComplete: totalConversations > 0 ? (processedUpToIndex / totalConversations * 100).toFixed(1) : 0,
+      historyCount: history.length,
+      lastProcessed: history.length > 0 ? history[history.length - 1] : null
+    };
+  }
+
+  /**
    * Clear all data (for reset)
    */
   async clearAll() {
-    const stores = ['entities', 'conversations', 'relationships', 'searchIndex', 'timeline', 'metadata'];
+    const stores = ['entities', 'conversations', 'relationships', 'searchIndex', 'timeline', 'metadata', 'processingHistory', 'conversationStatus'];
     const promises = stores.map(storeName => 
       this.performTransaction(storeName, 'readwrite', (store) => {
         return store.clear();

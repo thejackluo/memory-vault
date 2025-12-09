@@ -49,8 +49,75 @@
                 </div>
             </div>
             
-            <button id="start-processing" class="start-button">Process My Conversations</button>
-            <p class="welcome-note">This will analyze conversations.json in the same directory</p>
+            <div style="margin-bottom: 2rem;">
+                <div style="background: rgba(255,255,255,0.1); padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <h3 style="margin: 0 0 1rem 0; color: rgba(255,255,255,0.95); font-size: 1rem;">Processing Mode</h3>
+                    
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="process-mode" value="incremental" checked style="margin-right: 0.5rem;" />
+                            <span style="color: rgba(255,255,255,0.9);">Continue from last (Incremental)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="process-mode" value="range" style="margin-right: 0.5rem;" />
+                            <span style="color: rgba(255,255,255,0.9);">Custom Range</span>
+                        </label>
+                    </div>
+
+                    <div id="incremental-controls" style="display: block;">
+                        <label style="display: block; color: rgba(255,255,255,0.9); margin-bottom: 0.5rem; font-size: 0.875rem;">
+                            Number of conversations to process:
+                        </label>
+                        <input 
+                            type="number" 
+                            id="process-count" 
+                            value="50" 
+                            min="1" 
+                            step="50"
+                            style="width: 200px; padding: 0.5rem; border-radius: 6px; border: none; font-size: 1rem; text-align: center;"
+                        />
+                        <p style="color: rgba(255,255,255,0.7); font-size: 0.75rem; margin-top: 0.5rem;">
+                            Start with 50 to test, then increase or process in chunks of 100-500
+                        </p>
+                    </div>
+
+                    <div id="range-controls" style="display: none;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <label style="display: block; color: rgba(255,255,255,0.9); margin-bottom: 0.5rem; font-size: 0.875rem;">
+                                    Start Index (0-based):
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="range-start" 
+                                    value="0" 
+                                    min="0"
+                                    style="width: 100%; padding: 0.5rem; border-radius: 6px; border: none; font-size: 1rem;"
+                                />
+                            </div>
+                            <div>
+                                <label style="display: block; color: rgba(255,255,255,0.9); margin-bottom: 0.5rem; font-size: 0.875rem;">
+                                    End Index:
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="range-end" 
+                                    value="50" 
+                                    min="1"
+                                    style="width: 100%; padding: 0.5rem; border-radius: 6px; border: none; font-size: 1rem;"
+                                />
+                            </div>
+                        </div>
+                        <p style="color: rgba(255,255,255,0.7); font-size: 0.75rem; margin-top: 0.5rem;">
+                            Process specific conversations (e.g., 0-50, 50-100, 100-500, etc.)
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="start-processing" class="start-button">Process Conversations</button>
+            <button id="view-history" class="start-button" style="background: rgba(59, 130, 246, 0.8); margin-left: 1rem;">View Processing History</button>
+            <p class="welcome-note" id="progress-note">This will analyze conversations.json in the same directory</p>
         </div>
     </div>
 
@@ -111,6 +178,9 @@
                 </button>
                 <button id="reset-view" class="icon-button" title="Reset View">
                     <span>🔄</span>
+                </button>
+                <button id="show-history" class="icon-button" title="Processing History">
+                    <span>📜</span>
                 </button>
                 <button id="show-stats" class="icon-button" title="Statistics">
                     <span>📊</span>
@@ -259,8 +329,8 @@
                     <h3>Data Management</h3>
                     <button id="export-data" class="setting-button">Export Memory Graph</button>
                     <button id="import-data" class="setting-button">Import Memory Graph</button>
-                    <button id="process-new" class="setting-button">Process New Conversations</button>
-                    <button id="reprocess-data" class="setting-button">Reprocess All From Scratch</button>
+                    <button id="process-new" class="setting-button">Continue Processing More Conversations</button>
+                    <button id="reprocess-data" class="setting-button">Reset & Start From Conversation 1</button>
                     <button id="clear-data" class="setting-button danger">Clear All Data</button>
                 </div>
                 <div class="setting-group">
@@ -283,6 +353,45 @@
                         <input type="checkbox" id="setting-animate" checked />
                         <span>Animate graph layout</span>
                     </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Processing History Modal -->
+    <div id="history-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2>Processing History & Status</h2>
+                <button class="modal-close" id="close-history">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="history-stats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                    <!-- Stats will be populated here -->
+                </div>
+
+                <div id="conversation-status-viz" style="margin-bottom: 2rem;">
+                    <h3 style="margin-bottom: 1rem;">Conversation Processing Status</h3>
+                    <div id="status-timeline" style="background: var(--gray-50); border-radius: 8px; padding: 1rem; min-height: 100px;">
+                        <!-- Visual timeline will be rendered here -->
+                    </div>
+                    <div style="display: flex; gap: 2rem; margin-top: 1rem; font-size: 0.875rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 20px; height: 20px; background: #10b981; border-radius: 4px;"></div>
+                            <span>Processed</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 20px; height: 20px; background: var(--gray-300); border-radius: 4px;"></div>
+                            <span>Not Processed</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="history-log" style="margin-top: 2rem;">
+                    <h3 style="margin-bottom: 1rem;">Processing Log</h3>
+                    <div id="history-entries" style="max-height: 400px; overflow-y: auto;">
+                        <!-- History entries will be populated here -->
+                    </div>
                 </div>
             </div>
         </div>

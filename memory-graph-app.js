@@ -61,25 +61,73 @@ class MemoryGraphApp {
   async showWelcomeScreen() {
     document.getElementById('welcome-screen').style.display = 'flex';
     
-    // Check if data was already processed
-    const lastProcessed = await this.dbManager.getMetadata('lastProcessedTime');
     const button = document.getElementById('start-processing');
+    const historyButton = document.getElementById('view-history');
+    const note = document.getElementById('progress-note');
     
-    if (lastProcessed) {
-      button.textContent = 'Resume / Add New Conversations';
-      const note = document.querySelector('.welcome-note');
-      note.textContent = 'Previously processed. This will add any new conversations.';
+    // Setup mode switcher
+    const modeRadios = document.querySelectorAll('input[name="process-mode"]');
+    const incrementalControls = document.getElementById('incremental-controls');
+    const rangeControls = document.getElementById('range-controls');
+    
+    modeRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        if (e.target.value === 'incremental') {
+          incrementalControls.style.display = 'block';
+          rangeControls.style.display = 'none';
+        } else {
+          incrementalControls.style.display = 'none';
+          rangeControls.style.display = 'block';
+        }
+      });
+    });
+    
+    // Load conversations.json to check status
+    try {
+      const response = await fetch('conversations.json');
+      if (response.ok) {
+        const conversations = await response.json();
+        const totalConversations = conversations.length;
+        
+        // Set max values for range inputs
+        document.getElementById('range-start').max = totalConversations - 1;
+        document.getElementById('range-end').max = totalConversations;
+        document.getElementById('range-end').value = Math.min(50, totalConversations);
+        
+        // Check processing status
+        const stats = await this.dbManager.getProcessingStats(totalConversations);
+        
+        if (stats.processedUpToIndex > 0) {
+          note.innerHTML = `
+            <strong>Progress:</strong> ${stats.processedUpToIndex.toLocaleString()} of ${totalConversations.toLocaleString()} processed (${stats.percentComplete}%)<br>
+            <span style="color: rgba(255,255,255,0.7);">Remaining: ${stats.remaining.toLocaleString()} conversations</span>
+          `;
+          
+          if (stats.remaining > 0) {
+            button.textContent = 'Continue Processing';
+          } else {
+            button.textContent = 'All Processed! (Reprocess if needed)';
+          }
+        }
+      }
+    } catch (error) {
+      // conversations.json not loaded yet, that's ok
+      console.log('Could not load conversations.json:', error);
     }
     
     button.addEventListener('click', () => {
-      this.startProcessing(!!lastProcessed);
+      this.startProcessing();
+    });
+    
+    historyButton.addEventListener('click', async () => {
+      await this.showProcessingHistory();
     });
   }
 
   /**
    * Start processing conversations
    */
-  async startProcessing(resumeMode = false) {
+  async startProcessing() {
     document.getElementById('welcome-screen').style.display = 'none';
     document.getElementById('processing-screen').style.display = 'flex';
     
@@ -94,6 +142,21 @@ class MemoryGraphApp {
       
       const conversations = await response.json();
       
+      // Determine processing mode and parameters
+      const mode = document.querySelector('input[name="process-mode"]:checked').value;
+      let maxToProcess = null;
+      let customRange = null;
+      
+      if (mode === 'incremental') {
+        const processCountInput = document.getElementById('process-count');
+        maxToProcess = processCountInput ? parseInt(processCountInput.value) : null;
+      } else {
+        // Range mode
+        const startIndex = parseInt(document.getElementById('range-start').value) || 0;
+        const endIndex = parseInt(document.getElementById('range-end').value) || conversations.length;
+        customRange = { start: startIndex, end: endIndex };
+      }
+      
       // Create processor
       this.processor = new MemoryProcessor(this.dbManager);
       
@@ -103,40 +166,50 @@ class MemoryGraphApp {
         this.processor.minOccurrences = minOcc;
       }
       
-      // Update status for resume mode
-      if (resumeMode) {
-        document.getElementById('processing-status').textContent = 'Checking for new conversations...';
-      }
-      
       // Process with progress updates
       await this.processor.processConversations(conversations, (progress) => {
-        if (progress.alreadyProcessed) {
-          document.getElementById('processing-status').textContent = 'All conversations already processed!';
+        if (progress.alreadyComplete) {
+          document.getElementById('processing-status').textContent = 
+            `All ${progress.totalInFile.toLocaleString()} conversations already processed!`;
           document.getElementById('progress-fill').style.width = '100%';
           document.getElementById('progress-percent').textContent = '100%';
+          document.getElementById('processed-count').textContent = progress.totalInFile.toLocaleString();
+          document.getElementById('entities-found').textContent = progress.entitiesFound.toLocaleString();
           return;
         }
         
-        document.getElementById('processed-count').textContent = progress.processed.toLocaleString();
+        // Show current chunk being processed
+        const rangeStart = (progress.startIndex + 1).toLocaleString();
+        const rangeEnd = (progress.currentGlobalIndex || progress.startIndex).toLocaleString();
+        const totalInFile = progress.totalInFile.toLocaleString();
+        
+        document.getElementById('processed-count').textContent = 
+          `${rangeStart} - ${rangeEnd} of ${totalInFile}`;
         document.getElementById('entities-found').textContent = progress.entitiesFound.toLocaleString();
         document.getElementById('progress-percent').textContent = progress.percentage + '%';
         document.getElementById('progress-fill').style.width = progress.percentage + '%';
         
-        const batchNum = Math.ceil(progress.processed / 500);
-        const totalBatches = Math.ceil(progress.total / 500);
-        const status = progress.resumeMode ? 'Processing new conversations' : 'Processing conversations';
         document.getElementById('processing-status').textContent = 
-          `${status} - Batch ${batchNum} of ${totalBatches}...`;
-      }, resumeMode);
+          `Processing conversations ${rangeStart} to ${progress.endIndex.toLocaleString()}...`;
+      }, maxToProcess, customRange);
       
       // Processing complete
+      const newProcessedUpTo = await this.dbManager.getMetadata('processedUpToIndex') || 0;
+      const remaining = conversations.length - newProcessedUpTo;
+      
       document.getElementById('processing-status').textContent = 'Optimizing entities (filtering sparse data)...';
       await new Promise(resolve => setTimeout(resolve, 300));
       
       document.getElementById('processing-status').textContent = 'Building search index...';
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      document.getElementById('processing-status').textContent = 'Complete! Loading graph...';
+      if (remaining > 0) {
+        document.getElementById('processing-status').textContent = 
+          `Complete! ${remaining.toLocaleString()} conversations remaining. Loading graph...`;
+      } else {
+        document.getElementById('processing-status').textContent = 
+          'Complete! All conversations processed. Loading graph...';
+      }
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Show main app
@@ -316,6 +389,10 @@ class MemoryGraphApp {
       this.showSettingsModal();
     });
     
+    document.getElementById('show-history')?.addEventListener('click', async () => {
+      await this.showProcessingHistory();
+    });
+    
     // Graph controls
     document.getElementById('zoom-in')?.addEventListener('click', () => {
       this.graphRenderer.viewport.scale *= 1.2;
@@ -336,6 +413,10 @@ class MemoryGraphApp {
     
     document.getElementById('close-settings')?.addEventListener('click', () => {
       document.getElementById('settings-modal').style.display = 'none';
+    });
+    
+    document.getElementById('close-history')?.addEventListener('click', () => {
+      document.getElementById('history-modal').style.display = 'none';
     });
     
     // Settings actions
@@ -599,18 +680,21 @@ class MemoryGraphApp {
    * Reprocess data from scratch
    */
   async reprocessData() {
-    await this.dbManager.clearAll();
-    document.getElementById('main-app').style.display = 'none';
-    await this.startProcessing(false);
+    if (confirm('This will delete all data and start from conversation 1. Continue?')) {
+      await this.dbManager.clearAll();
+      await this.dbManager.saveMetadata('processedUpToIndex', 0);
+      document.getElementById('main-app').style.display = 'none';
+      location.reload(); // Refresh to show welcome screen
+    }
   }
 
   /**
-   * Process only new conversations (resume mode)
+   * Process next batch of conversations
    */
   async processNewConversations() {
     document.getElementById('settings-modal').style.display = 'none';
     document.getElementById('main-app').style.display = 'none';
-    await this.startProcessing(true);
+    location.reload(); // Go back to welcome screen which will show continue option
   }
 
   /**
@@ -643,6 +727,129 @@ class MemoryGraphApp {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  /**
+   * Show processing history modal
+   */
+  async showProcessingHistory() {
+    const modal = document.getElementById('history-modal');
+    if (!modal) return;
+
+    try {
+      // Load conversations.json to get total count
+      const response = await fetch('conversations.json');
+      const conversations = response.ok ? await response.json() : [];
+      const totalConversations = conversations.length;
+
+      // Get processing stats and history
+      const stats = await this.dbManager.getProcessingStats(totalConversations);
+      const history = await this.dbManager.getProcessingHistory();
+      const processedConvs = await this.dbManager.getAllProcessedConversations();
+
+      // Display stats
+      const statsContainer = document.getElementById('history-stats');
+      statsContainer.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-number">${stats.processedUpToIndex.toLocaleString()}</div>
+          <div class="stat-label">Last Index Processed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">${stats.totalProcessed.toLocaleString()}</div>
+          <div class="stat-label">Conversations Processed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">${stats.remaining.toLocaleString()}</div>
+          <div class="stat-label">Remaining</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">${stats.percentComplete}%</div>
+          <div class="stat-label">Complete</div>
+        </div>
+      `;
+
+      // Visualize conversation status
+      this.renderConversationStatusTimeline(totalConversations, stats.processedUpToIndex);
+
+      // Display history log
+      const historyContainer = document.getElementById('history-entries');
+      if (history.length === 0) {
+        historyContainer.innerHTML = '<p style="color: var(--gray-500); text-align: center; padding: 2rem;">No processing history yet</p>';
+      } else {
+        historyContainer.innerHTML = history.reverse().map(entry => {
+          const date = new Date(entry.timestamp);
+          const range = `${entry.startIndex.toLocaleString()} - ${entry.endIndex.toLocaleString()}`;
+          const count = entry.conversationsProcessed || (entry.endIndex - entry.startIndex);
+          
+          return `
+            <div style="background: var(--gray-50); padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 4px solid #3b82f6;">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                <div>
+                  <strong style="font-size: 1rem;">Conversations ${range}</strong>
+                  <div style="font-size: 0.875rem; color: var(--gray-600); margin-top: 0.25rem;">
+                    ${count.toLocaleString()} processed • ${(entry.entitiesFound || 0).toLocaleString()} entities found
+                  </div>
+                </div>
+                <div style="text-align: right; font-size: 0.875rem; color: var(--gray-500);">
+                  ${date.toLocaleDateString()}<br>${date.toLocaleTimeString()}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Show modal
+      modal.style.display = 'flex';
+
+      // Setup close button
+      const closeBtn = document.getElementById('close-history');
+      if (closeBtn) {
+        closeBtn.onclick = () => {
+          modal.style.display = 'none';
+        };
+      }
+    } catch (error) {
+      console.error('Failed to show processing history:', error);
+      alert('Failed to load processing history: ' + error.message);
+    }
+  }
+
+  /**
+   * Render conversation status timeline visualization
+   */
+  renderConversationStatusTimeline(totalConversations, processedUpToIndex) {
+    const container = document.getElementById('status-timeline');
+    if (!container) return;
+
+    // Create visual blocks showing processed vs unprocessed
+    const blocksToShow = Math.min(100, totalConversations); // Show max 100 blocks
+    const conversationsPerBlock = Math.ceil(totalConversations / blocksToShow);
+    
+    let html = '<div style="display: flex; flex-wrap: wrap; gap: 4px;">';
+    
+    for (let i = 0; i < blocksToShow; i++) {
+      const startIdx = i * conversationsPerBlock;
+      const endIdx = Math.min((i + 1) * conversationsPerBlock, totalConversations);
+      const isProcessed = startIdx < processedUpToIndex;
+      
+      const color = isProcessed ? '#10b981' : 'var(--gray-300)';
+      const title = `Conversations ${startIdx}-${endIdx - 1}${isProcessed ? ' (Processed)' : ' (Not Processed)'}`;
+      
+      html += `<div style="width: ${100 / Math.min(20, blocksToShow)}%; min-width: 30px; height: 40px; background: ${color}; border-radius: 4px; cursor: help;" title="${title}"></div>`;
+    }
+    
+    html += '</div>';
+    
+    // Add summary text
+    html += `
+      <div style="margin-top: 1rem; text-align: center; font-size: 0.875rem; color: var(--gray-600);">
+        Showing ${totalConversations.toLocaleString()} total conversations
+        ${conversationsPerBlock > 1 ? ` (each block = ~${conversationsPerBlock.toLocaleString()} conversations)` : ''}
+      </div>
+    `;
+    
+    container.innerHTML = html;
   }
 }
 

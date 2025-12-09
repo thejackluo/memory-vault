@@ -6,7 +6,7 @@
 class MemoryProcessor {
   constructor(dbManager) {
     this.dbManager = dbManager;
-    this.batchSize = 500; // Process 500 conversations at a time (increased for speed)
+    this.batchSize = 50; // Process 50 conversations at a time for better progress updates
     this.processedCount = 0;
     this.totalConversations = 0;
     this.entities = new Map(); // entity_id -> entity object
@@ -17,28 +17,45 @@ class MemoryProcessor {
   }
 
   /**
-   * Main processing entry point
+   * Main processing entry point - processes specific number of conversations
    */
-  async processConversations(conversations, onProgress, resumeMode = false) {
+  async processConversations(conversations, onProgress, maxToProcess = null, customRange = null) {
     this.onProgress = onProgress;
     
-    // Load existing entities if resuming
-    if (resumeMode) {
-      await this.loadExistingEntities();
+    // Load existing entities and progress
+    await this.loadExistingEntities();
+    
+    const totalInFile = conversations.length;
+    let startIndex, endIndex;
+
+    // Handle custom range if provided
+    if (customRange && customRange.start !== undefined && customRange.end !== undefined) {
+      startIndex = Math.max(0, Math.min(customRange.start, totalInFile));
+      endIndex = Math.max(startIndex, Math.min(customRange.end, totalInFile));
+    } else {
+      // Get current progress for incremental processing
+      const processedUpToIndex = await this.dbManager.getMetadata('processedUpToIndex') || 0;
+      startIndex = processedUpToIndex;
+      endIndex = totalInFile;
+      
+      if (maxToProcess !== null) {
+        endIndex = Math.min(startIndex + maxToProcess, totalInFile);
+      }
     }
     
-    // Filter out already processed conversations
-    const conversationsToProcess = await this.filterNewConversations(conversations);
-    
-    if (conversationsToProcess.length === 0) {
+    // Check if already done
+    if (startIndex >= endIndex || startIndex >= totalInFile) {
       if (this.onProgress) {
         this.onProgress({
-          processed: conversations.length,
-          total: conversations.length,
+          processed: 0,
+          total: 0,
           percentage: 100,
           entitiesFound: this.entities.size,
           recentBatch: 0,
-          alreadyProcessed: true
+          alreadyComplete: true,
+          startIndex: startIndex,
+          endIndex: startIndex,
+          totalInFile: totalInFile
         });
       }
       return {
@@ -48,13 +65,16 @@ class MemoryProcessor {
       };
     }
     
+    // Get the slice to process
+    const conversationsToProcess = conversations.slice(startIndex, endIndex);
+    
     this.totalConversations = conversationsToProcess.length;
     this.processedCount = 0;
 
-    // Process in batches
+    // Process in batches (internal batching for performance)
     for (let i = 0; i < conversationsToProcess.length; i += this.batchSize) {
       const batch = conversationsToProcess.slice(i, i + this.batchSize);
-      await this.processBatch(batch);
+      await this.processBatch(batch, startIndex + i);
       
       this.processedCount = Math.min(i + this.batchSize, conversationsToProcess.length);
       
@@ -66,11 +86,14 @@ class MemoryProcessor {
           percentage: (this.processedCount / this.totalConversations * 100).toFixed(1),
           entitiesFound: this.entities.size,
           recentBatch: batch.length,
-          resumeMode: resumeMode
+          startIndex: startIndex,
+          endIndex: endIndex,
+          totalInFile: totalInFile,
+          currentGlobalIndex: startIndex + this.processedCount
         });
       }
 
-      // Allow UI to update (shorter delay for larger batches)
+      // Allow UI to update
       await this.sleep(5);
     }
 
@@ -80,9 +103,18 @@ class MemoryProcessor {
     // Save all data to IndexedDB
     await this.saveToDatabase();
     
-    // Mark as processed
+    // Update progress marker
+    await this.dbManager.saveMetadata('processedUpToIndex', endIndex);
     await this.dbManager.saveMetadata('lastProcessedTime', Date.now());
-    await this.dbManager.saveMetadata('totalConversationsProcessed', conversations.length);
+
+    // Log this processing operation to history
+    await this.dbManager.addProcessingHistory({
+      startIndex: startIndex,
+      endIndex: endIndex,
+      conversationsProcessed: this.processedCount,
+      entitiesFound: this.entities.size,
+      totalInFile: totalInFile
+    });
 
     return {
       entities: Array.from(this.entities.values()),
@@ -107,20 +139,19 @@ class MemoryProcessor {
   }
 
   /**
-   * Filter out already processed conversations
+   * Get processing status
    */
-  async filterNewConversations(conversations) {
-    const processedConvIds = new Set();
+  async getProcessingStatus(totalConversations) {
+    const processedUpToIndex = await this.dbManager.getMetadata('processedUpToIndex') || 0;
+    const lastProcessedTime = await this.dbManager.getMetadata('lastProcessedTime');
     
-    // Get all processed conversation IDs from database
-    const existingConvs = await this.dbManager.getAllConversations();
-    existingConvs.forEach(conv => processedConvIds.add(conv.id));
-    
-    // Return only new conversations
-    return conversations.filter(conv => {
-      const convId = conv.id || conv.conversation_id;
-      return !processedConvIds.has(convId);
-    });
+    return {
+      processedUpToIndex,
+      remaining: Math.max(0, totalConversations - processedUpToIndex),
+      totalInFile: totalConversations,
+      lastProcessedTime,
+      isComplete: processedUpToIndex >= totalConversations
+    };
   }
 
   /**
@@ -152,16 +183,16 @@ class MemoryProcessor {
   /**
    * Process a batch of conversations
    */
-  async processBatch(batch) {
-    for (const conversation of batch) {
-      await this.processConversation(conversation);
+  async processBatch(batch, startIndexOffset = 0) {
+    for (let i = 0; i < batch.length; i++) {
+      await this.processConversation(batch[i], startIndexOffset + i);
     }
   }
 
   /**
    * Process a single conversation
    */
-  async processConversation(conversation) {
+  async processConversation(conversation, index = null) {
     const convId = conversation.id || conversation.conversation_id;
     const title = conversation.title || 'Untitled';
     const timestamp = conversation.create_time || conversation.update_time || Date.now() / 1000;
@@ -202,6 +233,11 @@ class MemoryProcessor {
 
     // Update timeline
     this.updateTimeline(date, convData.entities, convId);
+
+    // Mark conversation as processed in database
+    if (index !== null) {
+      await this.dbManager.markConversationProcessed(convId, index);
+    }
   }
 
   /**
