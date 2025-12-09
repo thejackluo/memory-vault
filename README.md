@@ -22,18 +22,21 @@ A complete toolkit for ChatGPT conversation exports with two powerful tools:
 
 **Memory Vault** provides two complementary ways to explore your ChatGPT data:
 
-### 🧠 Memory Graph (v3.1.0 - Now 5x Faster!)
+### 🧠 Memory Graph (v3.2.0 - Now with Batch Processing & Tracking!)
 An interactive knowledge graph that extracts and visualizes entities from your conversations:
-- **⚡ 5x Faster**: Processes 5,000 conversations in 30-40 seconds
-- **🔄 Process Once**: Data saved, instant load on subsequent visits
-- **➕ Incremental**: Add new conversations without full reprocess
+- **📦 Flexible Processing**: Process 50, 100, 500+ conversations at a time (YOU control the amount!)
+- **🔄 Incremental Building**: Each batch adds to existing graph, progress saved
+- **⚡ Fast Processing**: 50 conversations in ~1-2 seconds, with smooth progress updates
+- **🎯 Custom Ranges**: Process any specific conversation range (e.g., 100-200, 500-1000)
+- **📊 Full Tracking**: Visual timeline showing what's been processed
+- **🛡️ Hot-Reload Safe**: Progress saved after each batch (no data loss)
 - **🎯 Dense Entities**: Configurable filtering for meaningful entities only
 - Discover people, projects, knowledge, questions, thoughts, and patterns
 - See connections and relationships between entities
 - Timeline view showing how your interests evolved
 - Backlinks like Obsidian/Logseq
 - Fast search across all entities
-- **➡️ [Quick Start Guide](docs/QUICK_START.md)** | **[Full Documentation](docs/MEMORY_GRAPH_README.md)**
+- **➡️ [Quick Start Guide](docs/QUICK_START.md)** | **[Chunked Processing Guide](docs/CHUNKED_PROCESSING.md)** | **[Full Documentation](docs/MEMORY_GRAPH_README.md)**
 
 ### 📖 Conversation Viewer
 A polished interface for reading your conversation history:

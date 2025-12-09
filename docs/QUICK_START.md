@@ -34,26 +34,45 @@ python -m http.server 8000
 # Then open: http://localhost:8000/memory-graph.html
 ```
 
-## First Run (30-40 seconds)
+## First Run - Chunked Processing (NEW!)
 
-1. **Welcome Screen**: You'll see a beautiful intro with 6 feature cards
-2. **Click "Process My Conversations"**: This starts the magic
-3. **Watch Progress**: Live stats show:
-   - Conversations processed (500 at a time!)
-   - Entities discovered
-   - Progress percentage
-4. **Graph Appears**: Your memory graph loads with a smooth animation
+**You control how many conversations to process at a time!**
 
-> ⏱️ Processing time: ~30-40 seconds for 5,000 conversations (5x faster than v3.0!)
+1. **Welcome Screen**: Beautiful intro with 6 feature cards
+2. **Set Amount**: Enter how many conversations to process (e.g., 500)
+3. **Click "Process Conversations"**: Starts processing that chunk
+4. **Watch Progress**: Live stats show which conversations are being processed
+5. **Graph Appears**: Your memory graph loads with smooth animation
+
+> 💡 **Recommended**: Start with 500 conversations to test (~5-10 seconds)
+
+### Continue Processing More
+
+6. Want more? Settings → "Continue Processing More Conversations"
+7. Set amount again (e.g., 500)
+8. Processes the NEXT 500 (builds on existing graph!)
+9. Repeat until all conversations processed
+
+> ⏱️ Each 500 conversations: ~5-10 seconds  
+> Full 5,000 conversations: ~60 seconds total (can spread across multiple sessions)
+
+### Benefits of Chunked Processing
+
+✅ **No hot-reload issues** - Progress saved after each chunk  
+✅ **Test first** - Try 100-500 conversations before committing  
+✅ **Resume anytime** - Pick up exactly where you left off  
+✅ **Build incrementally** - Each chunk adds to the existing graph  
+
+> 📖 **See**: [Chunked Processing Guide](CHUNKED_PROCESSING.md) for detailed examples
 
 ## Subsequent Visits (Instant!)
 
-**Good news**: You only need to process once! 
+**Good news**: Data persists between sessions!
 
-- Data is saved in your browser (IndexedDB)
-- Next visit: Instant load, no processing needed
-- Button changes to "Resume / Add New Conversations"
-- Only new conversations will be processed
+- Data saved in your browser (IndexedDB)
+- Welcome screen shows progress (e.g., "500 of 5,340 processed")
+- Button changes to "Continue Processing"
+- Only processes remaining conversations
 
 ## Using Your Memory Graph
 
