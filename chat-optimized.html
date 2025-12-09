@@ -94,6 +94,30 @@
         background: #2563eb;
       }
 
+      .model-filter {
+        font-size: 10px;
+        padding: 4px 8px;
+        background: white;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        cursor: pointer;
+        color: #4b5563;
+        font-weight: 500;
+        flex: 1;
+        min-width: 120px;
+        max-width: 200px;
+      }
+
+      .model-filter:hover {
+        border-color: #9ca3af;
+      }
+
+      .model-filter:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
       .year-group {
         margin-bottom: 8px;
       }
@@ -753,6 +777,18 @@
         var sidebarContent = document.getElementById("sidebarContent");
         sidebarContent.innerHTML = "";
 
+        // Collect all unique models
+        var allModels = {};
+        conversations.forEach(function(conv) {
+          var model = getConversationModel(conv);
+          allModels[model] = (allModels[model] || 0) + 1;
+        });
+
+        // Sort models by count
+        var sortedModels = Object.keys(allModels).sort(function(a, b) {
+          return allModels[b] - allModels[a];
+        });
+
         // Add quick navigation bar
         var quickNav = document.createElement("div");
         quickNav.className = "quick-nav";
@@ -761,8 +797,20 @@
           <button class="quick-nav-btn" onclick="jumpToThisMonth()">This Month</button>
           <button class="quick-nav-btn" onclick="expandAll()">Expand All</button>
           <button class="quick-nav-btn" onclick="collapseAll()">Collapse All</button>
+          <select id="modelFilter" class="model-filter" onchange="filterByModel(this.value)">
+            <option value="">All Models</option>
+          </select>
         `;
         sidebarContent.appendChild(quickNav);
+
+        // Add model options to the select
+        var modelFilter = document.getElementById('modelFilter');
+        sortedModels.forEach(function(model) {
+          var option = document.createElement('option');
+          option.value = model;
+          option.textContent = model + ' (' + allModels[model] + ')';
+          modelFilter.appendChild(option);
+        });
 
         // Count total messages
         var totalMessages = 0;
@@ -1018,6 +1066,54 @@
         });
       }
 
+      // Filter conversations by model
+      function filterByModel(selectedModel) {
+        var links = document.querySelectorAll('.conversation-link');
+        var visibleConvs = 0;
+
+        links.forEach(function(link) {
+          var convId = link.dataset.convId;
+          if (!convId) return;
+
+          // Extract conversation index from convId (format: "conv-123")
+          var convIndex = parseInt(convId.replace('conv-', ''));
+          if (isNaN(convIndex) || convIndex >= conversations.length) return;
+
+          var conv = conversations[convIndex];
+          var convModel = getConversationModel(conv);
+
+          if (!selectedModel || convModel === selectedModel) {
+            link.style.display = 'block';
+            visibleConvs++;
+          } else {
+            link.style.display = 'none';
+          }
+        });
+
+        // Update week/month/year headers to show only visible counts
+        document.querySelectorAll('.week-group').forEach(function(weekGroup) {
+          var visibleLinks = weekGroup.querySelectorAll('.conversation-link[style*="display: block"], .conversation-link:not([style*="display"])');
+          var count = visibleLinks.length;
+          if (!selectedModel) {
+            // Recalculate from all links
+            visibleLinks = weekGroup.querySelectorAll('.conversation-link');
+            count = 0;
+            visibleLinks.forEach(function(l) {
+              if (l.style.display !== 'none') count++;
+            });
+          }
+
+          var weekHeader = weekGroup.querySelector('.week-header span');
+          if (weekHeader && count > 0) {
+            weekGroup.style.display = 'block';
+          } else if (count === 0) {
+            weekGroup.style.display = 'none';
+          }
+        });
+
+        console.log('Filtered to ' + visibleConvs + ' conversations for model: ' + (selectedModel || 'all'));
+      }
+
       // Load conversations from a specific period
       function loadPeriod(periodKey, conversations) {
         if (loadedPeriods.has(periodKey)) {
@@ -1106,9 +1202,49 @@
         var div = document.createElement("div");
         div.className = "conversation";
 
+        // Title with badges
+        var titleContainer = document.createElement("div");
+        titleContainer.style.cssText = "display: flex; align-items: center; gap: 8px; margin-bottom: 8px;";
+
         var title = document.createElement("h4");
         title.textContent = conversation.title || "(no title)";
-        div.appendChild(title);
+        title.style.cssText = "margin: 0; flex: 1;";
+        titleContainer.appendChild(title);
+
+        // Add status badges
+        if (conversation.is_starred) {
+          var starBadge = document.createElement("span");
+          starBadge.textContent = "⭐";
+          starBadge.title = "Starred";
+          starBadge.style.cssText = "font-size: 16px;";
+          titleContainer.appendChild(starBadge);
+        }
+
+        if (conversation.is_archived) {
+          var archiveBadge = document.createElement("span");
+          archiveBadge.textContent = "📦";
+          archiveBadge.title = "Archived";
+          archiveBadge.style.cssText = "font-size: 14px;";
+          titleContainer.appendChild(archiveBadge);
+        }
+
+        if (conversation.is_study_mode) {
+          var studyBadge = document.createElement("span");
+          studyBadge.textContent = "📚";
+          studyBadge.title = "Study Mode";
+          studyBadge.style.cssText = "font-size: 14px;";
+          titleContainer.appendChild(studyBadge);
+        }
+
+        if (conversation.is_do_not_remember) {
+          var privacyBadge = document.createElement("span");
+          privacyBadge.textContent = "🔒";
+          privacyBadge.title = "Memory Disabled";
+          privacyBadge.style.cssText = "font-size: 14px;";
+          titleContainer.appendChild(privacyBadge);
+        }
+
+        div.appendChild(titleContainer);
 
         // Add model and date info
         var metaDiv = document.createElement("div");
@@ -1121,6 +1257,16 @@
         modelBadge.textContent = model;
         modelBadge.style.cssText = "background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; margin-right: 8px;";
         metaDiv.appendChild(modelBadge);
+
+        // Add conversation ID badge (useful for debugging/reference)
+        if (conversation.conversation_id) {
+          var idBadge = document.createElement("span");
+          idBadge.className = "id-badge";
+          idBadge.textContent = "ID: " + conversation.conversation_id.substring(0, 8) + "...";
+          idBadge.title = conversation.conversation_id;
+          idBadge.style.cssText = "background: #f3f4f6; color: #6b7280; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 400; margin-right: 8px; cursor: help;";
+          metaDiv.appendChild(idBadge);
+        }
 
         // Add date if available
         if (conversation.create_time) {
