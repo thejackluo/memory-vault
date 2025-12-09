@@ -1,31 +1,43 @@
-# Ignore everything
-*
+# Ignore user data files (your personal ChatGPT exports)
+data/conversations.json
+data/assets.json
+data/group_chats.json
+data/shared_conversations.json
+data/message_feedback.json
+data/shopping.json
+data/user.json
 
-# Except the HTML files
-!chat-optimized.html
-!index.html
+# Ignore media files in data folder
+data/**/*.jpg
+data/**/*.jpeg
+data/**/*.png
+data/**/*.gif
+data/**/*.mp3
+data/**/*.mp4
+data/**/*.wav
+data/**/*.webm
 
-# Except the modular files (v2.0.0)
-!app.js
-!style.css
+# Keep the data folder itself
+!data/.gitkeep
 
-# Except the memory graph system files (v3.0.0)
-!memory-graph.html
-!memory-graph.css
-!memory-graph-app.js
-!db-manager.js
-!memory-processor.js
-!processing-worker.js
-!graph-renderer.js
-!timeline-view.js
-!entity-panel.js
-!search-engine.js
+# Ignore IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
 
-# Except the README files
-!README.md
-!ASSETS_README.md
-!docs/
-!docs/*.md
+# Ignore OS files
+Thumbs.db
+desktop.ini
 
-# And this gitignore itself
-!.gitignore
+# Ignore node_modules if you add any build tools
+node_modules/
+
+# Keep all project files (HTML, JS, CSS, docs)
+# Everything else is included by default
+
+.cursor/
+.claude/
+tests/

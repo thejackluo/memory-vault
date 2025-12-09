@@ -187,40 +187,51 @@ If your conversations include images, audio, or video:
 ```
 memory-vault/
 ├── README.md                      # This file (main documentation)
-├── QUICK_START.md                # 3-minute quick start for Memory Graph
-├── MEMORY_GRAPH_README.md        # Complete Memory Graph documentation
-├── ASSETS_README.md              # Media handling guide
+├── WHATS_NEW.md                  # Latest features and updates
+├── FIXES_APPLIED.md              # Recent fixes and improvements
 │
-├── Memory Graph System (v3.0.0)
-│   ├── memory-graph.html         # Main graph application
-│   ├── memory-graph.css          # Graph styling
-│   ├── memory-graph-app.js       # Application controller
+├── Main Applications
+│   ├── memory-graph.html         # Memory Graph application (main)
+│   ├── index.html                # Conversation Viewer (main)
+│   └── chat-optimized.html       # Optimized all-in-one viewer
+│
+├── js/                           # JavaScript modules
+│   ├── memory-graph-app.js       # Memory Graph controller
 │   ├── db-manager.js             # IndexedDB storage
 │   ├── memory-processor.js       # Entity extraction
 │   ├── graph-renderer.js         # Canvas visualization
 │   ├── timeline-view.js          # Timeline component
 │   ├── entity-panel.js           # Detail panel
 │   ├── search-engine.js          # Search engine
-│   └── processing-worker.js      # Web Worker (optional)
+│   ├── processing-worker.js      # Web Worker (optional)
+│   └── app.js                    # Conversation viewer logic
 │
-├── Conversation Viewer (v2.0.0)
-│   ├── index.html                # Modern modular viewer (recommended)
-│   ├── app.js                    # Application logic (ES6+)
-│   ├── style.css                 # Viewer styles
-│   ├── chat-optimized.html       # All-in-one viewer (legacy)
-│   ├── chat-fast.html            # Lightweight viewer
-│   ├── chat.html                 # Original viewer
-│   └── test_latex_links.html     # Testing interface
+├── css/                          # Stylesheets
+│   ├── memory-graph.css          # Memory Graph styles
+│   └── style.css                 # Conversation viewer styles
 │
-└── Your Data Files (from ChatGPT export)
-    ├── conversations.json        # Your conversation history
-    ├── assets.json               # Media asset mappings
-    ├── group_chats.json          # Group conversations
-    ├── shared_conversations.json # Shared conversations
-    ├── message_feedback.json     # Message feedback data
-    ├── shopping.json             # Shopping data
-    ├── user.json                 # User profile
-    └── [media files]             # Images, audio, video (if any)
+├── data/                         # Your ChatGPT data files
+│   ├── conversations.json        # Your conversation history
+│   ├── assets.json               # Media asset mappings
+│   ├── group_chats.json          # Group conversations
+│   ├── shared_conversations.json # Shared conversations
+│   ├── message_feedback.json     # Message feedback data
+│   ├── shopping.json             # Shopping data
+│   ├── user.json                 # User profile
+│   └── [media files]             # Images, audio, video (if any)
+│
+├── docs/                         # Documentation
+│   ├── QUICK_START.md            # Quick start guide
+│   ├── BATCH_PROCESSING_GUIDE.md # Batch processing guide
+│   ├── MEMORY_GRAPH_README.md    # Memory Graph documentation
+│   ├── DEVELOPER_GUIDE.md        # Developer reference
+│   ├── ASSETS_README.md          # Media handling guide
+│   └── CHUNKED_PROCESSING.md     # Chunked processing info
+│
+└── tests/                        # Test and legacy files
+    ├── test_latex_links.html     # LaTeX testing interface
+    ├── chat-fast.html            # Lightweight viewer
+    └── chat.html                 # Original viewer
 ```
 
 ## Privacy & Security
