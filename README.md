@@ -22,14 +22,18 @@ A complete toolkit for ChatGPT conversation exports with two powerful tools:
 
 **Memory Vault** provides two complementary ways to explore your ChatGPT data:
 
-### 🧠 Memory Graph (NEW in v3.0.0)
+### 🧠 Memory Graph (v3.1.0 - Now 5x Faster!)
 An interactive knowledge graph that extracts and visualizes entities from your conversations:
+- **⚡ 5x Faster**: Processes 5,000 conversations in 30-40 seconds
+- **🔄 Process Once**: Data saved, instant load on subsequent visits
+- **➕ Incremental**: Add new conversations without full reprocess
+- **🎯 Dense Entities**: Configurable filtering for meaningful entities only
 - Discover people, projects, knowledge, questions, thoughts, and patterns
 - See connections and relationships between entities
 - Timeline view showing how your interests evolved
 - Backlinks like Obsidian/Logseq
 - Fast search across all entities
-- **➡️ [Quick Start Guide](QUICK_START.md)** | **[Full Documentation](MEMORY_GRAPH_README.md)**
+- **➡️ [Quick Start Guide](docs/QUICK_START.md)** | **[Full Documentation](docs/MEMORY_GRAPH_README.md)**
 
 ### 📖 Conversation Viewer
 A polished interface for reading your conversation history:

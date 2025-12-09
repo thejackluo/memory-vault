@@ -6,29 +6,57 @@
 class MemoryProcessor {
   constructor(dbManager) {
     this.dbManager = dbManager;
-    this.batchSize = 100; // Process 100 conversations at a time
+    this.batchSize = 500; // Process 500 conversations at a time (increased for speed)
     this.processedCount = 0;
     this.totalConversations = 0;
     this.entities = new Map(); // entity_id -> entity object
     this.conversationEntities = new Map(); // conv_id -> [entity_ids]
     this.timeline = new Map(); // date -> {entities, conversations}
     this.onProgress = null; // Callback for progress updates
+    this.minOccurrences = 2; // Minimum occurrences to keep entity (filter sparse entities)
   }
 
   /**
    * Main processing entry point
    */
-  async processConversations(conversations, onProgress) {
+  async processConversations(conversations, onProgress, resumeMode = false) {
     this.onProgress = onProgress;
-    this.totalConversations = conversations.length;
+    
+    // Load existing entities if resuming
+    if (resumeMode) {
+      await this.loadExistingEntities();
+    }
+    
+    // Filter out already processed conversations
+    const conversationsToProcess = await this.filterNewConversations(conversations);
+    
+    if (conversationsToProcess.length === 0) {
+      if (this.onProgress) {
+        this.onProgress({
+          processed: conversations.length,
+          total: conversations.length,
+          percentage: 100,
+          entitiesFound: this.entities.size,
+          recentBatch: 0,
+          alreadyProcessed: true
+        });
+      }
+      return {
+        entities: Array.from(this.entities.values()),
+        conversations: this.conversationEntities,
+        timeline: this.buildTimeline()
+      };
+    }
+    
+    this.totalConversations = conversationsToProcess.length;
     this.processedCount = 0;
 
     // Process in batches
-    for (let i = 0; i < conversations.length; i += this.batchSize) {
-      const batch = conversations.slice(i, i + this.batchSize);
+    for (let i = 0; i < conversationsToProcess.length; i += this.batchSize) {
+      const batch = conversationsToProcess.slice(i, i + this.batchSize);
       await this.processBatch(batch);
       
-      this.processedCount = Math.min(i + this.batchSize, conversations.length);
+      this.processedCount = Math.min(i + this.batchSize, conversationsToProcess.length);
       
       // Report progress
       if (this.onProgress) {
@@ -37,22 +65,88 @@ class MemoryProcessor {
           total: this.totalConversations,
           percentage: (this.processedCount / this.totalConversations * 100).toFixed(1),
           entitiesFound: this.entities.size,
-          recentBatch: batch.length
+          recentBatch: batch.length,
+          resumeMode: resumeMode
         });
       }
 
-      // Allow UI to update
-      await this.sleep(10);
+      // Allow UI to update (shorter delay for larger batches)
+      await this.sleep(5);
     }
+
+    // Filter out sparse entities before saving
+    this.filterSparseEntities();
 
     // Save all data to IndexedDB
     await this.saveToDatabase();
+    
+    // Mark as processed
+    await this.dbManager.saveMetadata('lastProcessedTime', Date.now());
+    await this.dbManager.saveMetadata('totalConversationsProcessed', conversations.length);
 
     return {
       entities: Array.from(this.entities.values()),
       conversations: this.conversationEntities,
       timeline: this.buildTimeline()
     };
+  }
+
+  /**
+   * Load existing entities from database (for resume mode)
+   */
+  async loadExistingEntities() {
+    const existingEntities = await this.dbManager.getAllEntities();
+    existingEntities.forEach(entity => {
+      this.entities.set(entity.id, entity);
+    });
+    
+    const existingConversations = await this.dbManager.getAllConversations();
+    existingConversations.forEach(conv => {
+      this.conversationEntities.set(conv.id, conv);
+    });
+  }
+
+  /**
+   * Filter out already processed conversations
+   */
+  async filterNewConversations(conversations) {
+    const processedConvIds = new Set();
+    
+    // Get all processed conversation IDs from database
+    const existingConvs = await this.dbManager.getAllConversations();
+    existingConvs.forEach(conv => processedConvIds.add(conv.id));
+    
+    // Return only new conversations
+    return conversations.filter(conv => {
+      const convId = conv.id || conv.conversation_id;
+      return !processedConvIds.has(convId);
+    });
+  }
+
+  /**
+   * Filter out sparse entities (low occurrence count)
+   */
+  filterSparseEntities() {
+    const toDelete = [];
+    
+    for (const [entityId, entity] of this.entities) {
+      if (entity.occurrences < this.minOccurrences) {
+        toDelete.push(entityId);
+        
+        // Remove from conversation entities
+        for (const [convId, convData] of this.conversationEntities) {
+          convData.entities = convData.entities.filter(id => id !== entityId);
+        }
+      }
+    }
+    
+    // Remove sparse entities
+    toDelete.forEach(id => this.entities.delete(id));
+    
+    // Remove broken links
+    for (const entity of this.entities.values()) {
+      entity.links = entity.links.filter(linkId => this.entities.has(linkId));
+    }
   }
 
   /**
@@ -353,15 +447,65 @@ class MemoryProcessor {
   }
 
   /**
-   * Find existing entity by normalized key and type
+   * Find existing entity by normalized key and type (with fuzzy matching)
    */
   findExistingEntity(normalizedKey, type) {
+    // First try exact match
     for (const [id, entity] of this.entities) {
       if (entity.type === type && entity.metadata.normalizedKey === normalizedKey) {
         return id;
       }
     }
+    
+    // Try fuzzy match for similar names (edit distance <= 2)
+    if (normalizedKey.length > 5) {
+      for (const [id, entity] of this.entities) {
+        if (entity.type === type) {
+          const distance = this.levenshteinDistance(
+            entity.metadata.normalizedKey, 
+            normalizedKey
+          );
+          // Allow small variations (typos, plurals, etc.)
+          if (distance <= 2) {
+            return id;
+          }
+        }
+      }
+    }
+    
     return null;
+  }
+
+  /**
+   * Calculate Levenshtein distance for fuzzy matching
+   */
+  levenshteinDistance(str1, str2) {
+    const len1 = str1.length;
+    const len2 = str2.length;
+    const matrix = [];
+
+    if (len1 === 0) return len2;
+    if (len2 === 0) return len1;
+
+    for (let i = 0; i <= len1; i++) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= len2; j++) {
+      matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= len1; i++) {
+      for (let j = 1; j <= len2; j++) {
+        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        );
+      }
+    }
+
+    return matrix[len1][len2];
   }
 
   /**

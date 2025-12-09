@@ -58,18 +58,28 @@ class MemoryGraphApp {
   /**
    * Show welcome screen
    */
-  showWelcomeScreen() {
+  async showWelcomeScreen() {
     document.getElementById('welcome-screen').style.display = 'flex';
     
-    document.getElementById('start-processing').addEventListener('click', () => {
-      this.startProcessing();
+    // Check if data was already processed
+    const lastProcessed = await this.dbManager.getMetadata('lastProcessedTime');
+    const button = document.getElementById('start-processing');
+    
+    if (lastProcessed) {
+      button.textContent = 'Resume / Add New Conversations';
+      const note = document.querySelector('.welcome-note');
+      note.textContent = 'Previously processed. This will add any new conversations.';
+    }
+    
+    button.addEventListener('click', () => {
+      this.startProcessing(!!lastProcessed);
     });
   }
 
   /**
    * Start processing conversations
    */
-  async startProcessing() {
+  async startProcessing(resumeMode = false) {
     document.getElementById('welcome-screen').style.display = 'none';
     document.getElementById('processing-screen').style.display = 'flex';
     
@@ -87,22 +97,47 @@ class MemoryGraphApp {
       // Create processor
       this.processor = new MemoryProcessor(this.dbManager);
       
+      // Load and apply minimum occurrences setting
+      const minOcc = await this.dbManager.getMetadata('minOccurrences');
+      if (minOcc) {
+        this.processor.minOccurrences = minOcc;
+      }
+      
+      // Update status for resume mode
+      if (resumeMode) {
+        document.getElementById('processing-status').textContent = 'Checking for new conversations...';
+      }
+      
       // Process with progress updates
       await this.processor.processConversations(conversations, (progress) => {
+        if (progress.alreadyProcessed) {
+          document.getElementById('processing-status').textContent = 'All conversations already processed!';
+          document.getElementById('progress-fill').style.width = '100%';
+          document.getElementById('progress-percent').textContent = '100%';
+          return;
+        }
+        
         document.getElementById('processed-count').textContent = progress.processed.toLocaleString();
         document.getElementById('entities-found').textContent = progress.entitiesFound.toLocaleString();
         document.getElementById('progress-percent').textContent = progress.percentage + '%';
         document.getElementById('progress-fill').style.width = progress.percentage + '%';
+        
+        const batchNum = Math.ceil(progress.processed / 500);
+        const totalBatches = Math.ceil(progress.total / 500);
+        const status = progress.resumeMode ? 'Processing new conversations' : 'Processing conversations';
         document.getElementById('processing-status').textContent = 
-          `Processing batch ${Math.ceil(progress.processed / 100)} of ${Math.ceil(progress.total / 100)}...`;
-      });
+          `${status} - Batch ${batchNum} of ${totalBatches}...`;
+      }, resumeMode);
       
       // Processing complete
+      document.getElementById('processing-status').textContent = 'Optimizing entities (filtering sparse data)...';
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       document.getElementById('processing-status').textContent = 'Building search index...';
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       document.getElementById('processing-status').textContent = 'Complete! Loading graph...';
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Show main app
       await this.showMainApp();
@@ -309,9 +344,13 @@ class MemoryGraphApp {
     });
     
     document.getElementById('reprocess-data')?.addEventListener('click', () => {
-      if (confirm('This will reprocess all conversations. Continue?')) {
+      if (confirm('This will reprocess all conversations from scratch. Continue?')) {
         this.reprocessData();
       }
+    });
+    
+    document.getElementById('process-new')?.addEventListener('click', () => {
+      this.processNewConversations();
     });
     
     document.getElementById('clear-data')?.addEventListener('click', () => {
@@ -319,6 +358,21 @@ class MemoryGraphApp {
         this.clearData();
       }
     });
+    
+    // Minimum occurrences setting
+    const minOccInput = document.getElementById('setting-min-occurrences');
+    if (minOccInput) {
+      // Load saved value
+      this.dbManager.getMetadata('minOccurrences').then(saved => {
+        if (saved) minOccInput.value = saved;
+      });
+      
+      // Save on change
+      minOccInput.addEventListener('change', async () => {
+        await this.dbManager.saveMetadata('minOccurrences', parseInt(minOccInput.value));
+        alert('Setting saved! Reprocess data to apply the filter.');
+      });
+    }
     
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
@@ -542,12 +596,21 @@ class MemoryGraphApp {
   }
 
   /**
-   * Reprocess data
+   * Reprocess data from scratch
    */
   async reprocessData() {
     await this.dbManager.clearAll();
     document.getElementById('main-app').style.display = 'none';
-    await this.startProcessing();
+    await this.startProcessing(false);
+  }
+
+  /**
+   * Process only new conversations (resume mode)
+   */
+  async processNewConversations() {
+    document.getElementById('settings-modal').style.display = 'none';
+    document.getElementById('main-app').style.display = 'none';
+    await this.startProcessing(true);
   }
 
   /**

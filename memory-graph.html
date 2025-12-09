@@ -259,8 +259,19 @@
                     <h3>Data Management</h3>
                     <button id="export-data" class="setting-button">Export Memory Graph</button>
                     <button id="import-data" class="setting-button">Import Memory Graph</button>
-                    <button id="reprocess-data" class="setting-button">Reprocess Conversations</button>
+                    <button id="process-new" class="setting-button">Process New Conversations</button>
+                    <button id="reprocess-data" class="setting-button">Reprocess All From Scratch</button>
                     <button id="clear-data" class="setting-button danger">Clear All Data</button>
+                </div>
+                <div class="setting-group">
+                    <h3>Entity Filtering</h3>
+                    <label class="setting-option">
+                        <span>Minimum occurrences for entities:</span>
+                        <input type="number" id="setting-min-occurrences" value="2" min="1" max="10" style="width: 60px; margin-left: 10px;" />
+                    </label>
+                    <p style="font-size: 0.875rem; color: var(--gray-600); margin-top: 0.5rem;">
+                        Higher values = denser graph with only frequently mentioned entities
+                    </p>
                 </div>
                 <div class="setting-group">
                     <h3>Visualization</h3>
