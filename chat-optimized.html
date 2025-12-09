@@ -54,6 +54,45 @@
         z-index: 10;
       }
 
+      /* Quick navigation bar */
+      .quick-nav {
+        position: sticky;
+        top: 43px;
+        background: white;
+        padding: 8px;
+        border-bottom: 1px solid #e5e7eb;
+        z-index: 9;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .quick-nav-btn {
+        font-size: 10px;
+        padding: 4px 8px;
+        background: #f3f4f6;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        color: #4b5563;
+        font-weight: 500;
+        transition: all 0.15s;
+      }
+
+      .quick-nav-btn:hover {
+        background: #e5e7eb;
+        color: #1f2937;
+      }
+
+      .quick-nav-btn.primary {
+        background: #3b82f6;
+        color: white;
+      }
+
+      .quick-nav-btn.primary:hover {
+        background: #2563eb;
+      }
+
       .year-group {
         margin-bottom: 8px;
       }
@@ -68,6 +107,20 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
+        position: relative;
+      }
+
+      .year-header::before {
+        content: '▼';
+        position: absolute;
+        left: -2px;
+        font-size: 10px;
+        color: #9ca3af;
+        transition: transform 0.2s;
+      }
+
+      .year-group.collapsed .year-header::before {
+        transform: rotate(-90deg);
       }
 
       .year-header:hover {
@@ -78,6 +131,16 @@
         font-size: 11px;
         color: #9ca3af;
         font-weight: 400;
+      }
+
+      .year-group .year-content {
+        max-height: 5000px;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+      }
+
+      .year-group.collapsed .year-content {
+        max-height: 0;
       }
 
       .month-group {
@@ -94,10 +157,34 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
+        position: relative;
+      }
+
+      .month-header::before {
+        content: '▼';
+        position: absolute;
+        left: 10px;
+        font-size: 9px;
+        color: #9ca3af;
+        transition: transform 0.2s;
+      }
+
+      .month-group.collapsed .month-header::before {
+        transform: rotate(-90deg);
       }
 
       .month-header:hover {
         background: #f9fafb;
+      }
+
+      .month-group .month-content {
+        max-height: 3000px;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+      }
+
+      .month-group.collapsed .month-content {
+        max-height: 0;
       }
 
       .week-group {
@@ -114,10 +201,34 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
+        position: relative;
+      }
+
+      .week-header::before {
+        content: '▼';
+        position: absolute;
+        left: 22px;
+        font-size: 8px;
+        color: #9ca3af;
+        transition: transform 0.2s;
+      }
+
+      .week-group.collapsed .week-header::before {
+        transform: rotate(-90deg);
       }
 
       .week-header:hover {
         background: #f9fafb;
+      }
+
+      .week-group .week-content {
+        max-height: 2000px;
+        overflow: hidden;
+        transition: max-height 0.2s ease-out;
+      }
+
+      .week-group.collapsed .week-content {
+        max-height: 0;
       }
 
       .conversation-link {
@@ -637,6 +748,17 @@
         var sidebarContent = document.getElementById("sidebarContent");
         sidebarContent.innerHTML = "";
 
+        // Add quick navigation bar
+        var quickNav = document.createElement("div");
+        quickNav.className = "quick-nav";
+        quickNav.innerHTML = `
+          <button class="quick-nav-btn primary" onclick="jumpToLatest()">Latest</button>
+          <button class="quick-nav-btn" onclick="jumpToThisMonth()">This Month</button>
+          <button class="quick-nav-btn" onclick="expandAll()">Expand All</button>
+          <button class="quick-nav-btn" onclick="collapseAll()">Collapse All</button>
+        `;
+        sidebarContent.appendChild(quickNav);
+
         // Count total messages
         var totalMessages = 0;
         conversations.forEach(function(conv) {
@@ -700,7 +822,13 @@
           var yearHeader = document.createElement("div");
           yearHeader.className = "year-header";
           yearHeader.innerHTML = `<span>${year}</span><span class="year-count">${yearConvCount}</span>`;
+          yearHeader.onclick = function() {
+            yearDiv.classList.toggle('collapsed');
+          };
           yearDiv.appendChild(yearHeader);
+
+          var yearContent = document.createElement("div");
+          yearContent.className = "year-content";
 
           var months = Object.keys(byYear[year]).sort(function(a, b) { return b - a; });
 
@@ -717,7 +845,14 @@
             var monthHeader = document.createElement("div");
             monthHeader.className = "month-header";
             monthHeader.innerHTML = `<span>${monthData.name}</span><span class="year-count">${monthConvCount}</span>`;
+            monthHeader.onclick = function(e) {
+              e.stopPropagation();
+              monthDiv.classList.toggle('collapsed');
+            };
             monthDiv.appendChild(monthHeader);
+
+            var monthContent = document.createElement("div");
+            monthContent.className = "month-content";
 
             var weeks = Object.keys(monthData.weeks).sort(function(a, b) { return b - a; });
 
@@ -742,7 +877,16 @@
 
               weekHeader.innerHTML = `<span>Week ${weekKey} (${weekData.range}) - ${weekData.conversations.length}</span>`;
               weekHeader.appendChild(loadBtn);
+              weekHeader.onclick = function(e) {
+                if (e.target !== loadBtn) {
+                  e.stopPropagation();
+                  weekDiv.classList.toggle('collapsed');
+                }
+              };
               weekDiv.appendChild(weekHeader);
+
+              var weekContent = document.createElement("div");
+              weekContent.className = "week-content";
 
               weekData.conversations.forEach(function(item) {
                 var link = document.createElement("a");
@@ -764,15 +908,18 @@
                   });
                   link.classList.add('active');
                 };
-                weekDiv.appendChild(link);
+                weekContent.appendChild(link);
               });
 
-              monthDiv.appendChild(weekDiv);
+              weekDiv.appendChild(weekContent);
+              monthContent.appendChild(weekDiv);
             });
 
-            yearDiv.appendChild(monthDiv);
+            monthDiv.appendChild(monthContent);
+            yearContent.appendChild(monthDiv);
           });
 
+          yearDiv.appendChild(yearContent);
           sidebarContent.appendChild(yearDiv);
         });
 
@@ -794,6 +941,76 @@
           </div>
         `;
         sidebar.insertBefore(stats, sidebarContent);
+      }
+
+      // Quick navigation functions
+      function jumpToLatest() {
+        var yearGroups = document.querySelectorAll('.year-group');
+        if (yearGroups.length > 0) {
+          // Collapse all first
+          document.querySelectorAll('.year-group, .month-group, .week-group').forEach(function(el) {
+            el.classList.add('collapsed');
+          });
+
+          // Expand the latest year
+          var latestYear = yearGroups[0];
+          latestYear.classList.remove('collapsed');
+
+          // Expand the latest month in that year
+          var latestMonth = latestYear.querySelector('.month-group');
+          if (latestMonth) {
+            latestMonth.classList.remove('collapsed');
+
+            // Expand the latest week in that month
+            var latestWeek = latestMonth.querySelector('.week-group');
+            if (latestWeek) {
+              latestWeek.classList.remove('collapsed');
+              latestWeek.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }
+        }
+      }
+
+      function jumpToThisMonth() {
+        var now = new Date();
+        var currentYear = now.getFullYear();
+        var currentMonth = now.toLocaleString('default', { month: 'long' });
+
+        // Collapse all first
+        document.querySelectorAll('.year-group, .month-group, .week-group').forEach(function(el) {
+          el.classList.add('collapsed');
+        });
+
+        // Find and expand current year
+        var yearGroups = document.querySelectorAll('.year-group');
+        yearGroups.forEach(function(yearGroup) {
+          var yearText = yearGroup.querySelector('.year-header span').textContent;
+          if (yearText == currentYear) {
+            yearGroup.classList.remove('collapsed');
+
+            // Find and expand current month
+            var monthGroups = yearGroup.querySelectorAll('.month-group');
+            monthGroups.forEach(function(monthGroup) {
+              var monthText = monthGroup.querySelector('.month-header span').textContent;
+              if (monthText === currentMonth) {
+                monthGroup.classList.remove('collapsed');
+                monthGroup.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            });
+          }
+        });
+      }
+
+      function expandAll() {
+        document.querySelectorAll('.year-group, .month-group, .week-group').forEach(function(el) {
+          el.classList.remove('collapsed');
+        });
+      }
+
+      function collapseAll() {
+        document.querySelectorAll('.year-group, .month-group, .week-group').forEach(function(el) {
+          el.classList.add('collapsed');
+        });
       }
 
       // Load conversations from a specific period
@@ -959,16 +1176,23 @@
                 }
 
                 // Render LaTeX using KaTeX
-                if (typeof renderMathInElement !== 'undefined') {
-                  renderMathInElement(contentDiv, {
-                    delimiters: [
-                      {left: '$$', right: '$$', display: true},
-                      {left: '\\[', right: '\\]', display: true},
-                      {left: '$', right: '$', display: false},
-                      {left: '\\(', right: '\\)', display: false}
-                    ],
-                    throwOnError: false
-                  });
+                try {
+                  if (typeof renderMathInElement !== 'undefined') {
+                    renderMathInElement(contentDiv, {
+                      delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '\\[', right: '\\]', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false}
+                      ],
+                      throwOnError: false,
+                      trust: true
+                    });
+                  } else {
+                    console.warn('KaTeX renderMathInElement not loaded');
+                  }
+                } catch (e) {
+                  console.error('LaTeX rendering error:', e);
                 }
               } catch (e) {
                 // Fallback to plain text if markdown parsing fails
@@ -976,8 +1200,16 @@
               }
             } else if (part.transcript) {
               contentDiv.innerHTML = "<em>[Transcript]: " + part.transcript + "</em>";
-            } else if (part.asset && assetsJson) {
-              var link = assetsJson[part.asset.asset_pointer];
+            } else if (part.asset) {
+              // Handle asset pointers - images, audio, video, files
+              var assetPointer = part.asset.asset_pointer || part.asset;
+              var link = null;
+
+              // Check if assetsJson has the asset
+              if (assetsJson && typeof assetsJson === 'object' && Object.keys(assetsJson).length > 0) {
+                link = assetsJson[assetPointer];
+              }
+
               if (link) {
                 var ext = link.split('.').pop().toLowerCase();
                 var isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
@@ -985,7 +1217,7 @@
                 var isVideo = ['mp4', 'webm', 'mov'].includes(ext);
 
                 if (isImage) {
-                  contentDiv.innerHTML = '<div style="margin: 10px 0;"><img src="' + link + '" style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb;" alt="Image"></div>';
+                  contentDiv.innerHTML = '<div style="margin: 10px 0;"><img src="' + link + '" style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb;" alt="Image" onerror="this.parentElement.innerHTML=\'<em>[Image not found]</em>\'"></div>';
                 } else if (isAudio) {
                   contentDiv.innerHTML = '<div style="margin: 10px 0;"><audio controls style="width: 100%;"><source src="' + link + '"></audio></div>';
                 } else if (isVideo) {
@@ -994,7 +1226,8 @@
                   contentDiv.innerHTML = '<strong>[File]:</strong> <a href="' + link + '" target="_blank">' + link.split('/').pop() + '</a>';
                 }
               } else {
-                contentDiv.innerHTML = "<em>[File]: -Deleted-</em>";
+                // Asset not found in assets.json
+                contentDiv.innerHTML = "<em>[Asset: " + (assetPointer || 'unknown') + " - not found in assets.json]</em>";
               }
             }
 
