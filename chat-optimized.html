@@ -5,6 +5,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <style>
       * {
         margin: 0;
@@ -295,6 +299,47 @@
         margin: 15px 0;
         color: #4a5568;
         font-style: italic;
+      }
+
+      .message-content a {
+        color: #3b82f6;
+        text-decoration: none;
+        border-bottom: 1px solid transparent;
+        transition: border-bottom-color 0.2s;
+        word-break: break-all;
+      }
+
+      .message-content a:hover {
+        border-bottom-color: #3b82f6;
+      }
+
+      /* Style for links with title attribute (URL on hover) */
+      .message-content a[title]:hover::after {
+        content: attr(title);
+        position: absolute;
+        background: #1f2937;
+        color: #f9fafb;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        margin-top: 25px;
+        margin-left: -100px;
+        max-width: 400px;
+        word-break: break-all;
+        z-index: 1000;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        pointer-events: none;
+      }
+
+      /* KaTeX styling */
+      .message-content .katex {
+        font-size: 1.1em;
+      }
+
+      .message-content .katex-display {
+        margin: 16px 0;
+        overflow-x: auto;
+        overflow-y: hidden;
       }
 
       .message-content table {
@@ -895,6 +940,36 @@
               // Use marked.js to parse markdown
               try {
                 contentDiv.innerHTML = marked.parse(cleanedText);
+
+                // Process links to add title attributes for hover display
+                var links = contentDiv.getElementsByTagName('a');
+                for (var i = 0; i < links.length; i++) {
+                  var link = links[i];
+                  var href = link.getAttribute('href');
+                  if (href && href.length > 40) {
+                    // For long URLs, show truncated text and full URL on hover
+                    if (!link.title) {
+                      link.title = href;
+                    }
+                    // If link text is the same as href and it's long, truncate it
+                    if (link.textContent === href && href.length > 50) {
+                      link.textContent = href.substring(0, 40) + '...' + href.substring(href.length - 10);
+                    }
+                  }
+                }
+
+                // Render LaTeX using KaTeX
+                if (typeof renderMathInElement !== 'undefined') {
+                  renderMathInElement(contentDiv, {
+                    delimiters: [
+                      {left: '$$', right: '$$', display: true},
+                      {left: '\\[', right: '\\]', display: true},
+                      {left: '$', right: '$', display: false},
+                      {left: '\\(', right: '\\)', display: false}
+                    ],
+                    throwOnError: false
+                  });
+                }
               } catch (e) {
                 // Fallback to plain text if markdown parsing fails
                 contentDiv.textContent = cleanedText;
