@@ -1161,28 +1161,33 @@
               // Protect LaTeX from markdown processing
               var latexBlocks = [];
               var latexIndex = 0;
+              var latexCount = {display: 0, inline: 0};
 
+              // Use HTML comments as placeholders - markdown won't touch these
               // Protect display math \[ \]
               cleanedText = cleanedText.replace(/\\\[([\s\S]*?)\\\]/g, function(match) {
-                var placeholder = '___LATEX_DISPLAY_' + latexIndex + '___';
+                var placeholder = '<!--LATEXDISPLAY' + latexIndex + '-->';
                 latexBlocks[latexIndex] = match;
                 latexIndex++;
+                latexCount.display++;
                 return placeholder;
               });
 
               // Protect display math $$ $$
               cleanedText = cleanedText.replace(/\$\$([\s\S]*?)\$\$/g, function(match) {
-                var placeholder = '___LATEX_DISPLAY_' + latexIndex + '___';
+                var placeholder = '<!--LATEXDISPLAY' + latexIndex + '-->';
                 latexBlocks[latexIndex] = match;
                 latexIndex++;
+                latexCount.display++;
                 return placeholder;
               });
 
               // Protect inline math \( \)
               cleanedText = cleanedText.replace(/\\\(([\s\S]*?)\\\)/g, function(match) {
-                var placeholder = '___LATEX_INLINE_' + latexIndex + '___';
+                var placeholder = '<!--LATEXINLINE' + latexIndex + '-->';
                 latexBlocks[latexIndex] = match;
                 latexIndex++;
+                latexCount.inline++;
                 return placeholder;
               });
 
@@ -1190,28 +1195,47 @@
               cleanedText = cleanedText.replace(/\$([^\s$][^$]*?)\$/g, function(match, content) {
                 // Only treat as LaTeX if it contains backslashes or common LaTeX commands
                 if (content.indexOf('\\') !== -1 || /[a-zA-Z]{2,}/.test(content)) {
-                  var placeholder = '___LATEX_INLINE_' + latexIndex + '___';
+                  var placeholder = '<!--LATEXINLINE' + latexIndex + '-->';
                   latexBlocks[latexIndex] = match;
                   latexIndex++;
+                  latexCount.inline++;
                   return placeholder;
                 }
                 return match;
               });
 
+              // Debug logging if LaTeX was found
+              if (latexIndex > 0) {
+                console.log('Protected ' + latexIndex + ' LaTeX blocks (' + latexCount.display + ' display, ' + latexCount.inline + ' inline)');
+              }
+
               // Use marked.js to parse markdown
               try {
                 contentDiv.innerHTML = marked.parse(cleanedText);
 
-                // Restore LaTeX blocks
+                // Restore LaTeX blocks from HTML comments
                 var html = contentDiv.innerHTML;
+                var restoredCount = 0;
                 for (var i = 0; i < latexBlocks.length; i++) {
                   if (latexBlocks[i]) {
-                    // Try both display and inline placeholders
-                    var displayPlaceholder = '___LATEX_DISPLAY_' + i + '___';
-                    var inlinePlaceholder = '___LATEX_INLINE_' + i + '___';
-                    html = html.replace(displayPlaceholder, latexBlocks[i]);
-                    html = html.replace(inlinePlaceholder, latexBlocks[i]);
+                    // HTML comments are preserved by markdown
+                    var displayPlaceholder = '<!--LATEXDISPLAY' + i + '-->';
+                    var inlinePlaceholder = '<!--LATEXINLINE' + i + '-->';
+
+                    // Replace all occurrences
+                    var beforeLength = html.length;
+                    while (html.indexOf(displayPlaceholder) !== -1) {
+                      html = html.replace(displayPlaceholder, latexBlocks[i]);
+                      restoredCount++;
+                    }
+                    while (html.indexOf(inlinePlaceholder) !== -1) {
+                      html = html.replace(inlinePlaceholder, latexBlocks[i]);
+                      restoredCount++;
+                    }
                   }
+                }
+                if (restoredCount > 0) {
+                  console.log('Restored ' + restoredCount + ' LaTeX blocks');
                 }
                 contentDiv.innerHTML = html;
 
