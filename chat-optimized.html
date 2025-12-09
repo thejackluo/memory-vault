@@ -842,17 +842,32 @@
       function cleanChatGPTMarkup(text) {
         if (!text) return text;
 
+        // Remove ChatGPT private use area Unicode characters used for citations
+        // These are: \ue200-\ue206, \uf525, etc.
+        text = text.replace(/[\ue200-\ue206\uf525]/g, '');
+
         // Remove tool invocation markers like 【turn0calculator0】
         text = text.replace(/【[^】]*】/g, '');
 
-        // Clean up citation markers like citeturn0search5
+        // Clean up citation markers like citeturn0search5 or citeturn0search4turn0search0
         text = text.replace(/cite(turn\d+search\d+)+/gi, '');
+
+        // Remove entity citation patterns like entity["book","Midnight News",0]
+        // This regex matches: entity["type","name",number]
+        text = text.replace(/entity\["[^"]*","[^"]*",\d+\]/g, function(match) {
+          // Extract the name part (second quoted string)
+          var nameMatch = match.match(/entity\["[^"]*","([^"]*)"/);
+          return nameMatch ? nameMatch[1] : '';
+        });
 
         // Remove other ChatGPT internal markers
         text = text.replace(/\u3010[^\u3011]*\u3011/g, ''); // Unicode brackets
 
-        // Clean up multiple spaces
-        text = text.replace(/\s+/g, ' ').trim();
+        // Clean up multiple consecutive spaces (but preserve newlines)
+        text = text.replace(/[^\S\n]+/g, ' ');
+
+        // Remove spaces at the beginning/end of lines
+        text = text.replace(/^[ \t]+|[ \t]+$/gm, '');
 
         return text;
       }
