@@ -7,9 +7,14 @@ A complete toolkit for ChatGPT conversation exports with two powerful tools:
 
 ## Quick Navigation
 
-- 🚀 **New here?** Start with [`QUICK_START.md`](QUICK_START.md) to get the Memory Graph running in 3 minutes
+### For Users
+- 🚀 **New here?** Start with [`QUICK_START.md`](docs/QUICK_START.md) to get the Memory Graph running in 3 minutes
 - 📖 **Conversation Viewer?** See [Getting Started](#getting-started) below for the classic viewer
-- 🧠 **Memory Graph Details?** See [`MEMORY_GRAPH_README.md`](MEMORY_GRAPH_README.md) for complete documentation
+- 🧠 **Memory Graph Details?** See [`MEMORY_GRAPH_README.md`](docs/MEMORY_GRAPH_README.md) for complete documentation
+
+### For Developers
+- 👨‍💻 **Developer Guide**: See [`DEVELOPER_GUIDE.md`](docs/DEVELOPER_GUIDE.md) for technical architecture and API reference
+- 📝 **Change Log**: See [`.cursor-changes`](.cursor-changes) for version history
 
 ---
 
@@ -91,9 +96,12 @@ Your ChatGPT export includes multiple JSON files:
 - **`shopping.json`** - Shopping-related conversations and data
 - **`assets.json`** - Mapping of media asset IDs to file paths
 
-**Viewer Documentation:**
+**Documentation:**
+- **[`QUICK_START.md`](docs/QUICK_START.md)** - Get Memory Graph running in 3 minutes
+- **[`MEMORY_GRAPH_README.md`](docs/MEMORY_GRAPH_README.md)** - Complete Memory Graph user guide
+- **[`DEVELOPER_GUIDE.md`](docs/DEVELOPER_GUIDE.md)** - Technical reference for developers
 - **`ASSETS_README.md`** - Detailed guide on handling images, audio, and video files
-- **`README.md`** - This file (viewer documentation)
+- **`README.md`** - This file (main overview)
 
 ## Which Tool Should I Use?
 
