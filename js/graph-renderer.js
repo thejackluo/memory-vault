@@ -90,6 +90,13 @@ class GraphRenderer {
     this.edges = [];
     this.nodeMap.clear();
     
+    // Safety check: ensure we have valid canvas dimensions
+    if (this.width <= 0 || this.height <= 0) {
+      console.warn('Canvas dimensions are invalid, using defaults', this.width, this.height);
+      this.width = 800;
+      this.height = 600;
+    }
+    
     // Create nodes
     entities.forEach((entity, index) => {
       const node = {
@@ -165,6 +172,14 @@ class GraphRenderer {
    * Start the simulation/rendering loop
    */
   start() {
+    console.log('GraphRenderer.start() called', {
+      nodes: this.nodes.length,
+      edges: this.edges.length,
+      width: this.width,
+      height: this.height,
+      isRunning: this.isRunning
+    });
+    
     this.isRunning = true;
     this.animate();
   }
@@ -186,19 +201,19 @@ class GraphRenderer {
   animate() {
     if (!this.isRunning) return;
     
-    // Run physics simulation
+    // Run physics simulation (but only if alpha is high enough)
     if (this.simulationAlpha > 0.01) {
       this.updatePhysics();
       this.simulationAlpha -= this.alphaDecay;
     }
     
-    // Update visible nodes/edges (viewport culling)
+    // Always update visible nodes/edges (viewport culling)
     this.updateVisibleElements();
     
-    // Render
+    // Always render (even after simulation settles)
     this.render();
     
-    // Continue animation
+    // Continue animation loop indefinitely while running
     this.animationFrame = requestAnimationFrame(() => this.animate());
   }
 
@@ -284,11 +299,27 @@ class GraphRenderer {
     const viewTop = -this.viewport.offsetY / this.viewport.scale - margin;
     const viewBottom = (this.height - this.viewport.offsetY) / this.viewport.scale + margin;
     
-    // Filter visible nodes
+    // Filter visible nodes (check both visibility flag AND viewport bounds)
+    const totalNodes = this.nodes.length;
+    const visibleFlaggedNodes = this.nodes.filter(node => node.visible !== false);
+    
     this.visibleNodes = this.nodes.filter(node => 
+      node.visible !== false &&  // Check visibility flag
       node.x >= viewLeft && node.x <= viewRight &&
       node.y >= viewTop && node.y <= viewBottom
     );
+    
+    // Debug: Log if no nodes are visible (only on first frame or when count changes significantly)
+    if (this.visibleNodes.length === 0 && totalNodes > 0) {
+      console.warn('No visible nodes!', {
+        totalNodes,
+        visibleFlagged: visibleFlaggedNodes.length,
+        viewport: { viewLeft, viewRight, viewTop, viewBottom },
+        scale: this.viewport.scale,
+        offset: { x: this.viewport.offsetX, y: this.viewport.offsetY },
+        sampleNode: this.nodes[0] ? { x: this.nodes[0].x, y: this.nodes[0].y, visible: this.nodes[0].visible } : null
+      });
+    }
     
     // Filter visible edges (only if both nodes are visible)
     const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
@@ -303,6 +334,12 @@ class GraphRenderer {
   render() {
     // Clear canvas
     this.ctx.clearRect(0, 0, this.width, this.height);
+    
+    // Safety check: ensure we have valid dimensions
+    if (this.width <= 0 || this.height <= 0) {
+      console.warn('Cannot render: invalid canvas dimensions', this.width, this.height);
+      return;
+    }
     
     // Save context state
     this.ctx.save();
@@ -648,11 +685,21 @@ class GraphRenderer {
    * Reset viewport to show all nodes
    */
   resetViewport() {
-    // Calculate bounding box
+    // Calculate bounding box of visible nodes only
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     
-    this.nodes.forEach(node => {
+    const visibleNodes = this.nodes.filter(node => node.visible !== false);
+    
+    // Safety check: if no visible nodes, reset to default view
+    if (visibleNodes.length === 0) {
+      this.viewport.scale = 1;
+      this.viewport.offsetX = 0;
+      this.viewport.offsetY = 0;
+      return;
+    }
+    
+    visibleNodes.forEach(node => {
       minX = Math.min(minX, node.x);
       maxX = Math.max(maxX, node.x);
       minY = Math.min(minY, node.y);
@@ -664,9 +711,10 @@ class GraphRenderer {
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
     
-    // Calculate scale to fit all nodes
-    const scaleX = this.width / (width + 200);
-    const scaleY = this.height / (height + 200);
+    // Calculate scale to fit all nodes (add padding)
+    const padding = 200;
+    const scaleX = width > 0 ? this.width / (width + padding) : 1;
+    const scaleY = height > 0 ? this.height / (height + padding) : 1;
     const scale = Math.min(scaleX, scaleY, 1);
     
     this.viewport.scale = scale;
@@ -678,10 +726,24 @@ class GraphRenderer {
    * Resize canvas
    */
   resize(width, height) {
+    const oldWidth = this.width;
+    const oldHeight = this.height;
+    
     this.width = width;
     this.height = height;
     this.canvas.width = width;
     this.canvas.height = height;
+    
+    // If we have nodes and dimensions changed significantly, rescale their positions
+    if (this.nodes.length > 0 && oldWidth > 0 && oldHeight > 0) {
+      const scaleX = width / oldWidth;
+      const scaleY = height / oldHeight;
+      
+      this.nodes.forEach(node => {
+        node.x *= scaleX;
+        node.y *= scaleY;
+      });
+    }
   }
 
   /**

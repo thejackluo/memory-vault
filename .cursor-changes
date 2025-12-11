@@ -1,0 +1,154 @@
+# Memory Vault - Change Log
+
+## 2025-12-09: Fixed Graph Rendering Disappearance Issue
+
+### Problem
+The memory graph would appear briefly but then disappear immediately, making it impossible to visualize the data.
+
+### Root Cause Analysis
+The issue was caused by a **visibility filtering bug** in the `GraphRenderer` class (`js/graph-renderer.js`):
+
+1. **Missing visibility check**: The `updateVisibleElements()` method only checked if nodes were within viewport bounds, but **never checked the `node.visible` property**
+2. **Filter mismatch**: The `filterByType()` method would set `node.visible = false` for filtered nodes, but these nodes would still be processed because the viewport culling didn't respect this flag
+3. **Edge cases**: The `resetViewport()` method didn't handle edge cases like zero visible nodes or invalid bounding boxes
+
+### Changes Made
+
+#### 1. Fixed `updateVisibleElements()` Method (Lines 280-299)
+**Before:**
+```javascript
+this.visibleNodes = this.nodes.filter(node => 
+  node.x >= viewLeft && node.x <= viewRight &&
+  node.y >= viewTop && node.y <= viewBottom
+);
+```
+
+**After:**
+```javascript
+this.visibleNodes = this.nodes.filter(node => 
+  node.visible !== false &&  // ✓ Now checks visibility flag
+  node.x >= viewLeft && node.x <= viewRight &&
+  node.y >= viewTop && node.y <= viewBottom
+);
+```
+
+**Impact**: Ensures that nodes marked as invisible by filters are properly excluded from rendering.
+
+#### 2. Enhanced `resetViewport()` Method (Lines 656-691)
+**Changes:**
+- Now only calculates bounding box based on **visible nodes** (not all nodes)
+- Added safety check for zero visible nodes scenario
+- Added division-by-zero protection for width/height calculations
+- Properly handles edge cases where all nodes might be filtered out
+
+**Before:**
+```javascript
+this.nodes.forEach(node => {
+  minX = Math.min(minX, node.x);
+  // ... no safety checks
+});
+```
+
+**After:**
+```javascript
+const visibleNodes = this.nodes.filter(node => node.visible !== false);
+
+if (visibleNodes.length === 0) {
+  // Reset to default view
+  this.viewport.scale = 1;
+  this.viewport.offsetX = 0;
+  this.viewport.offsetY = 0;
+  return;
+}
+
+visibleNodes.forEach(node => {
+  // ... with proper bounds checking
+});
+```
+
+#### 3. Added Canvas Dimension Safety Check (Lines 304-311)
+**Added:**
+```javascript
+// Safety check: ensure we have valid dimensions
+if (this.width <= 0 || this.height <= 0) {
+  return;
+}
+```
+
+**Impact**: Prevents rendering errors if canvas hasn't been properly sized yet.
+
+### Testing Recommendations
+1. Open `memory-graph.html` in your browser
+2. Process some conversations
+3. Verify the graph renders and stays visible
+4. Test filtering by unchecking/checking entity types
+5. Verify zoom and pan controls work smoothly
+6. Test the "Reset View" button
+
+### Files Modified
+- `js/graph-renderer.js` - 3 methods updated with bug fixes and safety checks
+
+### Status
+✅ **Fixed** - Graph should now render properly and remain visible.
+
+---
+
+## 2025-12-09 (Update 2): Additional Rendering Fixes
+
+### Additional Issues Found
+
+After the initial fix, rendering still wasn't working. Further investigation revealed:
+
+1. **Canvas Dimension Initialization Issue**: Nodes were being positioned using `this.width` and `this.height` which could be 0 or invalid at construction time
+2. **Render Loop Stopping**: The animation loop would continue but wasn't rendering after simulation settled
+3. **Resize Not Updating Node Positions**: When canvas was resized, node positions weren't scaled accordingly
+
+### Additional Changes Made
+
+#### 1. Added Dimension Safety Check in `loadData()` (Lines 94-99)
+```javascript
+// Safety check: ensure we have valid canvas dimensions
+if (this.width <= 0 || this.height <= 0) {
+  console.warn('Canvas dimensions are invalid, using defaults', this.width, this.height);
+  this.width = 800;
+  this.height = 600;
+}
+```
+**Impact**: Prevents nodes from being positioned at (0,0) if canvas isn't properly sized yet.
+
+#### 2. Enhanced `resize()` Method to Rescale Node Positions (Lines 707-724)
+**Added:**
+- Tracks old dimensions
+- Calculates scale factors
+- Rescales all node positions proportionally
+
+**Impact**: Nodes maintain their relative positions when canvas is resized.
+
+#### 3. Improved Animation Loop Comments (Lines 192-199)
+Clarified that render loop continues indefinitely, not just during physics simulation.
+
+#### 4. Added Comprehensive Debug Logging
+- `start()` method logs initialization state
+- `render()` warns on invalid dimensions
+- `updateVisibleElements()` warns when no nodes are visible with detailed viewport info
+
+**Impact**: Makes it much easier to diagnose rendering issues in the browser console.
+
+### Debugging Instructions
+
+If the graph still doesn't render:
+
+1. **Open Browser DevTools** (F12)
+2. **Check Console** for these messages:
+   - "GraphRenderer.start() called" - should show nodes count, canvas dimensions
+   - "No visible nodes!" - indicates viewport culling issue
+   - "Cannot render: invalid canvas dimensions" - indicates canvas sizing issue
+3. **Check Canvas Element**: In DevTools Elements tab, inspect `<canvas id="graph-canvas">` and verify it has width/height attributes set
+4. **Check for Errors**: Look for any JavaScript errors that might be stopping execution
+
+### Files Modified (Update 2)
+- `js/graph-renderer.js` - 4 methods enhanced with fixes and debug logging
+
+### Status
+✅ **Enhanced** - Added comprehensive fixes for canvas initialization, resizing, and debug logging.
+

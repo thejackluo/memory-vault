@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Renderer Debug</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: system-ui, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        #container {
+            width: 800px;
+            height: 600px;
+            background: white;
+            border: 2px solid #333;
+            margin: 20px auto;
+            position: relative;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #debug {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        #debug h2 {
+            margin-top: 0;
+        }
+        
+        #debug pre {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center;">Graph Renderer Debug Tool</h1>
+    
+    <div id="container">
+        <canvas id="graph-canvas"></canvas>
+    </div>
+    
+    <div style="text-align: center; margin: 20px;">
+        <button onclick="testBasicRender()">Test Basic Render</button>
+        <button onclick="testWithSampleData()">Test With Sample Data</button>
+        <button onclick="logRendererState()">Log Renderer State</button>
+        <button onclick="clearCanvas()">Clear Canvas</button>
+    </div>
+    
+    <div id="debug">
+        <h2>Debug Info</h2>
+        <div id="debug-output">
+            <p>Click "Test With Sample Data" to test the graph renderer.</p>
+            <p>Open browser console (F12) to see detailed logs.</p>
+        </div>
+    </div>
+
+    <script src="js/graph-renderer.js"></script>
+    <script>
+        let renderer = null;
+        
+        function log(message) {
+            const output = document.getElementById('debug-output');
+            const time = new Date().toLocaleTimeString();
+            output.innerHTML += `<p><strong>[${time}]</strong> ${message}</p>`;
+            console.log(message);
+        }
+        
+        function testBasicRender() {
+            log('Testing basic canvas rendering...');
+            
+            const canvas = document.getElementById('graph-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            canvas.width = 800;
+            canvas.height = 600;
+            
+            log(`Canvas size: ${canvas.width}x${canvas.height}`);
+            
+            // Draw a test pattern
+            ctx.fillStyle = '#e0e0e0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = 'red';
+            ctx.fillRect(50, 50, 100, 100);
+            
+            ctx.fillStyle = 'blue';
+            ctx.beginPath();
+            ctx.arc(400, 300, 50, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'green';
+            ctx.fillRect(650, 450, 100, 100);
+            
+            log('✅ Basic rendering works! You should see colored shapes.');
+        }
+        
+        function testWithSampleData() {
+            log('Creating sample data...');
+            
+            // Create sample entities
+            const sampleEntities = [
+                { id: '1', name: 'Person A', type: 'person', links: ['2', '3'] },
+                { id: '2', name: 'Project X', type: 'project', links: ['1', '4'] },
+                { id: '3', name: 'Knowledge Y', type: 'knowledge', links: ['1'] },
+                { id: '4', name: 'Question Z', type: 'question', links: ['2'] },
+                { id: '5', name: 'Thought W', type: 'thought', links: [] }
+            ];
+            
+            log(`Created ${sampleEntities.length} sample entities`);
+            
+            // Initialize canvas
+            const canvas = document.getElementById('graph-canvas');
+            const container = document.getElementById('container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            log(`Canvas dimensions: ${canvas.width}x${canvas.height}`);
+            
+            // Create renderer
+            if (renderer) {
+                log('Stopping existing renderer...');
+                renderer.stop();
+            }
+            
+            renderer = new GraphRenderer(canvas);
+            log(`Renderer created`);
+            
+            // Load data
+            renderer.loadData(sampleEntities, () => {
+                log(`Data loaded: ${renderer.nodes.length} nodes, ${renderer.edges.length} edges`);
+                log('Starting animation...');
+                renderer.start();
+                
+                setTimeout(() => {
+                    log(`Renderer state after 1s: isRunning=${renderer.isRunning}, alpha=${renderer.simulationAlpha.toFixed(3)}`);
+                    log(`Visible nodes: ${renderer.visibleNodes.length} / ${renderer.nodes.length}`);
+                }, 1000);
+            });
+        }
+        
+        function logRendererState() {
+            if (!renderer) {
+                log('❌ No renderer initialized. Click "Test With Sample Data" first.');
+                return;
+            }
+            
+            const state = {
+                isRunning: renderer.isRunning,
+                nodes: renderer.nodes.length,
+                visibleNodes: renderer.visibleNodes.length,
+                edges: renderer.edges.length,
+                simulationAlpha: renderer.simulationAlpha.toFixed(3),
+                viewport: renderer.viewport,
+                canvasDimensions: { width: renderer.width, height: renderer.height }
+            };
+            
+            log('Renderer State:');
+            document.getElementById('debug-output').innerHTML += 
+                `<pre>${JSON.stringify(state, null, 2)}</pre>`;
+        }
+        
+        function clearCanvas() {
+            const canvas = document.getElementById('graph-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (renderer) {
+                renderer.stop();
+                renderer = null;
+            }
+            
+            log('Canvas cleared, renderer stopped');
+        }
+        
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            log('Page loaded. Ready to test!');
+        });
+    </script>
+</body>
+</html>
+
